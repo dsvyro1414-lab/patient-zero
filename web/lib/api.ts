@@ -1,0 +1,55 @@
+// API types + server-side fetch helpers for the Python ML service.
+
+export interface DayRecord {
+  day_index: number;
+  infection_probability: number | null;
+  health_deviation_index: number;
+  corroborating_signals: number;
+  alarm: boolean;
+  signals: Record<string, number>;
+  why: { signal: string; z: number }[];
+}
+
+export interface DemoResult {
+  source: string;
+  subject_id: string;
+  onset_day: number | null;
+  n_days: number;
+  n_alarms: number;
+  first_alarm_day: number | null;
+  model_loaded: boolean;
+  records: DayRecord[];
+}
+
+export interface Metrics {
+  source: string;
+  model: string;
+  subjects: number;
+  positives: number;
+  roc_auc: number;
+  operating_threshold: number;
+  episode_sensitivity: number | null;
+  median_lead_time_days: number | null;
+  healthy_false_alarm_rate: number;
+  false_alarm_budget_per_days: number;
+}
+
+export interface EvaluateResult {
+  metrics: Metrics;
+  roc: { fpr: number[]; tpr: number[]; auc: number } | null;
+}
+
+const SERVER_BASE = process.env.ML_SERVICE_URL || "http://localhost:8000";
+
+async function getServer<T>(path: string): Promise<T | null> {
+  try {
+    const r = await fetch(`${SERVER_BASE}${path}`, { cache: "no-store" });
+    if (!r.ok) return null;
+    return (await r.json()) as T;
+  } catch {
+    return null;
+  }
+}
+
+export const getDemo = () => getServer<DemoResult>("/demo");
+export const getEvaluate = () => getServer<EvaluateResult>("/evaluate");

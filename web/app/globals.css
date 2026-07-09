@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f5f6f8;
+  --card: #ffffff;
+  --border: #e6e8ee;
+  --text: #14181d;
+  --muted: #6b7280;
+  --brand: #15a34a;
+  --green: #16a34a;
+  --amber: #f59e0b;
+  --red: #ef4444;
+  /* signal palette (shared with charts via lib/signals.ts) */
+  --rhr: #ef4444;
+  --resp: #f97316;
+  --hrv: #3b82f6;
+  --temp: #14b8a6;
+  --sleep: #8b5cf6;
+  --hdi: #16a34a;
+  --prob: #7c3aed;
+}
+
+* { box-sizing: border-box; }
+html, body { padding: 0; margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+.muted { color: var(--muted); }
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1013;
+    --card: #14181d;
+    --border: #232a31;
+    --text: #eef1f4;
+    --muted: #9aa4b2;
+  }
+}
