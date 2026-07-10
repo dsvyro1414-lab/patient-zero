@@ -6,6 +6,10 @@ vitals drift the way they do in the days before symptoms — while you sleep.
 
 Built solo for the **ML Empowerment Build Challenge 2.0** (AI for Health).
 
+**▶ Live demo: https://patient-zero-two.vercel.app** — open **Replay** for the
+money-shot (a real Stanford COVID case scored day by day) and **Report** for the
+honest metrics. Frontend on Vercel, ML service on Railway.
+
 > **Not a medical device.** It outputs a physiological anomaly flag consistent
 > with early illness, never a diagnosis.
 
