@@ -5,64 +5,75 @@
 
 ## 0. TL;DR
 
-**Patient Zero** — веб-приложение, которое подключается к Whoop, учит личный
-физиологический baseline и предупреждает о болезни **за несколько дней до первых
-симптомов**. Хакатон: **ML Empowerment Build Challenge 2.0**, трек **AI for Health**.
-Дедлайн: **31 июля 2026, 09:45 GMT+3**. Соло.
+**Patient Zero** — веб-приложение: подключается к Whoop, учит личный физиологический
+baseline и поднимает флаг, когда организм начинает бороться с инфекцией — за дни до
+симптомов. Хакатон **ML Empowerment Build Challenge 2.0**, трек **AI for Health**.
+Дедлайн: **2026-07-31, 09:45 GMT+3**. Соло. Сегодня 2026-07-10 → ~21 день.
 
-**Главная веха пройдена: ядро валидировано на РЕАЛЬНЫХ досимптомных данных COVID.**
-ML-сервис и фронтенд работают. Обучение полностью локальное (интернет не нужен).
+**Ядро валидировано на РЕАЛЬНЫХ досимптомных данных COVID (Stanford).** Всё
+закоммичено и **опубликовано:** https://github.com/dsvyro1414-lab/patient-zero (public).
 
-**Честный headline (реальные данные Stanford, один канал Fitbit):**
-> Changepoint-детектор ловит **15/27 = 56% эпизодов COVID**, медианное
-> **опережение 3 дня**, **~1 ложная тревога на 33 здоровых дня**.
-> Это в русле опубликованной науки Stanford (Mishra/Alavi).
+**Честный headline (реальные Stanford, один канал RHR):**
+> Детектор ловит **8/27 = 30% эпизодов COVID ДО симптомов**, медианное опережение
+> **5 дней**; в окне ±2 дня — 16/27 = 59%, медиана 1.5 дня; **~1 ложная тревога на
+> 31 здоровый день**. Классификатор (вторичный) — AUC 0.55.
 
-Осталось: заякорить демо на личном Whoop-эпизоде + упаковать сабмишн.
+Осталось: деплой + Devpost-сабмишн. Личный Whoop-кейс уже добавлен как честный пример
+(не как «доказательство»).
 
 ---
 
 ## 1. Что это и почему выигрывает
 
-Два ML-слоя в одном продукте — с чётким разделением ролей:
+Два ML-слоя с чётким разделением ролей:
 
-1. **Changepoint-монитор — ГЛАВНЫЙ детектор** (real-time, без меток). Личный
-   robust baseline (median/MAD) + CUSUM по respiratory rate, RHR, HRV, skin temp,
-   sleep. Ловит устойчивый многодневный сдвиг перед симптомами. Это **тот же
-   метод (RHR-Diff), что в COVID-исследованиях Stanford** — и именно он даёт
-   честный headline-результат. Питает утреннюю тревогу и replay-демо.
-2. **Обученный классификатор — ВТОРИЧНЫЙ слой** (gradient boosting, subject-level
-   CV, калибровка). На реальных данных Stanford (один канал RHR) он слабый
-   (AUC ≈ 0.53) — и это **честно объясняется**: см. абляцию в §6. Силён он только
-   на многосигнальных данных, которые даёт Whoop пользователя.
+1. **Changepoint-монитор — ГЛАВНЫЙ детектор** (real-time, без меток). Личный robust
+   baseline (median/MAD) + CUSUM по каждому сигналу, слитые во **взвешенное среднее**
+   отклонений в σ (Health Deviation Index). Тревога — на устойчивом, подтверждённом
+   несколькими каналами, многодневном сдвиге. Тот же метод (RHR-Diff), что в
+   COVID-исследованиях Stanford. Питает утреннюю тревогу и replay-демо.
+2. **Обученный классификатор — ВТОРИЧНЫЙ слой** (gradient boosting, subject-level CV,
+   калибровка). На одноканальном RHR слабый (**AUC 0.55**) — честно показан как есть,
+   а не спрятан. Ответ на «нельзя обучить на n=1»: модель учится на публичной когорте.
 
-Фичи — **subject-normalized robust z-scores**, поэтому детектор device-agnostic:
-переносится с Fitbit/Oura на Whoop, который он не видел.
+Фичи — **subject-normalized robust z-scores** → детектор device-agnostic. Baseline
+**каузальный** (`shift(1)` до окна), CUSUM копит только вперёд — опережение достижимо
+в реальном времени, не задним числом.
 
 **Мапинг на рубрику** (Technical 30 / Creativity 20 / Impact 20 / UX 15 / Presentation 15):
-- Technical: два реальных ML-слоя, метрики на held-out по субъектам, **воспроизводимые
-  эксперименты включая честный негативный результат** (см. `ml-service/experiments/`).
-- Creativity: интеграция с Whoop — редкость; changepoint как «то, для чего дневная
-  гранулярность идеальна».
-- Impact: 3-дневная фора на отдых/изоляцию; понятный благополучатель.
+- Technical: два реальных ML-слоя, метрики на реальной когорте, воспроизводимые
+  эксперименты **включая честный негативный результат** (`ml-service/experiments/`).
+- Creativity: интеграция с Whoop; changepoint как «то, для чего дневная гранулярность идеальна».
+- Impact: 5-дневная фора на отдых/изоляцию.
 - UX+Presentation: replay-таймлайн (money-shot) + Report с честной детекцией + дисклеймеры.
 
-Ловит: **AI for Health** (основная) + **Best Use of ML** + **Most Innovative** + **Data-Driven Insights**.
+Цели: **AI for Health** (основная) + Best Use of ML + Most Innovative + Data-Driven Insights.
 
 ---
 
-## 2. Архитектура
+## 2. Архитектура и как приложение работает СЕЙЧАС
 
 ```
-Whoop v2 API ──OAuth/снапшот──▶ ML-сервис (Python/FastAPI)  ◀──/ml/*──  Web (Next.js/Vercel)
-                                  ├ features (robust-z)                  ├ Connect
-                                  ├ changepoint (CUSUM)  ⭐ главный       ├ Today (статус)
-                                  ├ classifier (HGB)      вторичный      ├ Replay (таймлайн) ⭐
-                                  └ /evaluate /score-history /demo       └ Report (детекция + ROC)
+Whoop v2 API ──OAuth/CSV-экспорт──▶ ML-сервис (Python/FastAPI :8000)  ◀──/ml/*──  Web (Next.js :3000)
+                                     ├ features.py   robust-z (каузально)          ├ Connect  (app/page.tsx)
+                                     ├ changepoint.py CUSUM+HDI  ⭐ главный          ├ Today    статус на сегодня
+                                     ├ train.py/model.joblib     вторичный          ├ Replay   таймлайн ⭐
+                                     └ /evaluate /score-history /demo               └ Report   детекция + ROC
 ```
 
-- Фронт проксирует `/ml/*` → Python-сервис (`ML_SERVICE_URL`, дефолт `:8000`).
-- Один и тот же normalize+score путь в реал-тайме и в replay-демо → демо = настоящая логика.
+Рантайм-поток (что происходит при открытии приложения):
+1. Веб (`web/next.config.mjs`) проксирует любой `/ml/*` на Python-сервис (`ML_SERVICE_URL`, дефолт `:8000`).
+2. **Report** зовёт `GET /evaluate` → отдаёт `models/metrics.json` (+`roc.json`). Экран ведёт
+   **досимптомной** чувствительностью детектора; ROC классификатора — вторичной панелью.
+3. **Replay** зовёт `GET /demo` → сервис берёт реального COVID-субъекта из `stanford.csv`,
+   прогоняет через `changepoint.analyze()` и возвращает по-дневный ряд (z-оценки, HDI,
+   тревоги, «почему»). Таймлайн рисует маркеры ALARM и ONSET. **Это настоящая логика, не мокап.**
+4. **Today** — статус «на сегодня» (тот же путь скоринга).
+5. Один и тот же `features.robust_z` + `changepoint.analyze` используются и в обучении,
+   и в реал-тайме, и в демо → нет train/serve skew.
+
+Тренировка/скоринг **офлайн** (данные локальные). Модель `model.joblib` и `stanford.csv`
+закоммичены → свежий клон воспроизводит цифры без скачивания 378 МБ.
 
 ---
 
@@ -70,156 +81,145 @@ Whoop v2 API ──OAuth/снапшот──▶ ML-сервис (Python/FastAPI
 
 | Компонент | Статус |
 |---|---|
-| Реальные Stanford-данные → `data/stanford.csv` (118 субъектов, 8804 дня, 27 COVID) | ✅ собрано |
-| Тренировочный пайплайн (subject-level CV, калибровка) | ✅ работает |
-| Changepoint-детектор + честная оценка детекции (`evaluate_detection`) | ✅ работает, настроен |
-| Пороги настроены (`MIN_BASELINE_DAYS=12`, `FUSED_ALARM=4.5`) | ✅ 56% / 3д / ~1-на-33 |
-| FastAPI `/evaluate` `/score-history` `/demo` | ✅ работает |
-| Report перенаправлен на статистику детекции (классификатор — вторичен) | ✅ работает |
-| Эксперименты (абляция, warmup, фьюжн) воспроизводимы | ✅ `ml-service/experiments/` |
-| Фронтенд: 4 экрана на живом API | ✅ работает |
+| Реальные Stanford-данные → `data/stanford.csv` (116 субъектов, 27 COVID) | ✅ собрано, закоммичено |
+| Детектор + честная оценка (`evaluate_detection`) + пороги настроены | ✅ 30% досимпт / 5д / ~1-на-31 |
+| Классификатор (subject-level CV, калибровка) | ✅ AUC 0.55, вторичный |
+| FastAPI `/evaluate` `/score-history` `/demo` | ✅ работает (:8000) |
+| Report ведёт досимптомной детекцией | ✅ работает |
+| Фронтенд: 4 экрана на живом API | ✅ работает (:3000) |
+| Эксперименты (сигналы / warmup / spread / фьюжн) воспроизводимы | ✅ `experiments/` |
+| Личный Whoop-кейс добавлен в README как честный пример | ✅ сделано |
+| Всё в git + **публичный GitHub** | ✅ 5 коммитов на `main` |
 | Whoop v2 OAuth + backfill (код) | ✅ код готов, нужны креды приложения |
-| **Заякоренное демо на ЛИЧНОМ Whoop-эпизоде** | ⬜ TODO (нужны данные пользователя) |
-| **Devpost-сабмишн (видео, README, скриншоты, деплой)** | ⬜ TODO |
-| Whoop live webhook | ⬜ стретч |
-
-**Реальные метрики** (не синтетика): детекция 56%, опережение 3 дня, ЛТ ~1/33.
-Классификатор AUC ≈ 0.53 (RHR-only) — вторичный, честно помечен.
+| **Деплой (Vercel + Render) + живой линк** | ⬜ TODO |
+| **Devpost-сабмишн (видео, скриншоты, описание)** | ⬜ TODO |
+| Доверительные интервалы в UI | ⬜ мелочь |
+| Живой Whoop webhook | ⬜ стретч |
 
 ---
 
-## 4. Данные (РЕШЕНО 2026-07-10)
+## 4. Данные (Stanford, РЕШЕНО)
 
-Из трёх кандидатов реально доступен **только Stanford**:
+Реально доступен только **Stanford COVID-19 Wearables** (Mishra 2020): публичный GCS-zip,
+без заявок. Oura TemPredict мёртв (контракт), Scripps DETECT за DAA. Zip (378 МБ, разово):
+`https://storage.googleapis.com/gbsc-gcp-project-ipop_public/COVID-19/COVID-19-Wearables.zip`
+— поминутные HR/steps/sleep, **только RHR** (без HRV/дыхания/темп), меток внутри нет.
 
-| Датасет | Вердикт |
-|---|---|
-| **Stanford COVID-19 Wearables** (Mishra 2020) | ✅ Открыт. Публичный GCS-zip, без заявок. |
-| **Oura TemPredict** | ❌ Мёртв — Oura контрактно запрещает отдавать физиологию третьим лицам. |
-| **Scripps DETECT** | ❌ За email-заявкой с DAA → нереально к дедлайну. |
+Метки (даты симптомов 32 COVID-субъектов) — в `data/mishra2020_supplementary.xlsx`
+(лист SuppTable3). Даты PHI-сдвинуты, но сдвиг постоянен внутри субъекта → относительное
+выравнивание «онсет vs физиология» сохранено (**проверено:** все 27 онсетов внутри диапазона).
 
-**Скачивание (378 МБ, разовое, требует интернет):**
-```
-https://storage.googleapis.com/gbsc-gcp-project-ipop_public/COVID-19/COVID-19-Wearables.zip
-```
-Содержит поминутные `{ID}_hr.csv` / `_steps.csv` / `_sleep.csv` для 118 субъектов —
-**только пульс/шаги/сон, БЕЗ HRV / частоты дыхания / темп. кожи**. Меток внутри нет.
-
-**Метки** (даты симптомов/диагноза 32 COVID-субъектов) — в supplementary статьи,
-лист `SuppTable3_Fig2a_COVID-19`, лежит в репо как
-`ml-service/data/mishra2020_supplementary.xlsx`. Даты PHI-сдвинуты, но сдвиг
-постоянен внутри субъекта → относительное выравнивание «онсет vs физиология» сохранено.
-
-**Сборка:** `ml-service/data/build_stanford.py` стримит zip (без распаковки 3.6 ГБ),
-считает дневной resting-HR (пульс в минуты без шагов за 12 мин → дневная медиана),
-берёт COVID-онсет (симптом ближайший к дате диагноза), маскирует не-COVID эпизоды,
-пишет `data/stanford.csv` (`subject_id, day_index, resting_heart_rate, onset`).
-`dataset.py` сам выводит `label` из `onset` (окно [-3, +1]).
+`data/build_stanford.py` стримит zip, считает дневной resting-HR, берёт онсет, маскирует
+не-COVID болезни → `data/stanford.csv`. `stanford.csv` уже собран и закоммичен — пересборка
+нужна только если менять правила.
 
 ---
 
 ## 5. Как запустить
 
-Обучение и сервис — **офлайн, интернет не нужен** (данные локальные).
-
 ```bash
-# venv лежит в ОСНОВНОМ репо, НЕ в worktree:
 VENV=/Users/david/ML-Empowerment-Build-Challenge-2.0/ml-service/.venv/bin/python
 
-# (разово) собрать реальные данные из скачанного zip + supplementary:
-cd ml-service
-$VENV data/build_stanford.py --zip /path/COVID-19-Wearables.zip \
-      --xlsx data/mishra2020_supplementary.xlsx
-
-# обучить (пишет models/metrics.json с блоком detection):
-$VENV src/train.py --source stanford
-
-# ML-сервис:
-cd src && $VENV -m uvicorn app:app --port 8000
+# ML-сервис (stanford.csv и model.joblib уже в репо — пересборка/переобучение не нужны):
+cd ml-service/src && $VENV -m uvicorn app:app --port 8000
 
 # веб (терминал 2):
-cd web && npm install && npm run dev      # http://localhost:3000
+cd web && npm install && npm run dev            # http://localhost:3000
 
-# эксперименты (абляция / warmup / фьюжн):
+# переобучить (если менял детектор/данные) — пишет models/metrics.json:
+$VENV ml-service/src/train.py --source stanford
+
+# эксперименты (сигналы / warmup / spread-оценщик / фьюжн):
 $VENV ml-service/experiments/run_experiments.py
 ```
 
+Открыть http://localhost:3000 → Connect → Today → Replay → Report.
+
 ---
 
-## 6. Карта репозитория
+## 6. Карта репозитория (ключевое)
 
 ```
-ml-service/
-  src/synth.py          синтетические размеченные данные (fallback)
-  src/features.py       device-agnostic robust-z фичи (MIN_BASELINE_DAYS=12)
-  src/dataset.py        грузит data/stanford.csv или синтетику; label_from_onset()
-  src/train.py          subject-level CV + калибровка + пишет detection-блок в metrics.json
-  src/changepoint.py    personal baseline + CUSUM; analyze() параметрический;
-                        evaluate_detection(); FUSED_ALARM=4.5 (настроено)
-  src/score.py          per-day вероятность + тревога + "почему"
-  src/whoop_client.py   Whoop v2 OAuth + backfill + to_daily_frame()
-  src/app.py            FastAPI
-  data/build_stanford.py   сборка реального stanford.csv из zip+xlsx ⭐
-  data/mishra2020_supplementary.xlsx   источник меток (SuppTable3)
-  data/stanford.csv        собранные реальные данные (118 субъектов)
-  experiments/run_experiments.py + README.md   абляция / warmup / фьюжн ⭐
-  models/               model.joblib + metrics.json (+ detection) + roc.json
-web/
-  app/page.tsx                 Connect
-  app/(app)/today/page.tsx     Today
-  app/(app)/replay/page.tsx    Replay timeline ⭐
-  app/(app)/report/page.tsx    Report — ВЕДЁТ статистикой детекции, ROC вторичен
-  components/  lib/  next.config.mjs
-.claude/launch.json          конфиг dev-сервера для preview
+ml-service/src/
+  features.py       robust-z (каузально, shift(1)); SPREAD_ESTIMATOR="lagged_mad";
+                    MIN_BASELINE_DAYS=12 (теперь ИСТИННЫЙ прогрев)
+  changepoint.py    baseline + CUSUM; HDI = ВЗВЕШЕННОЕ СРЕДНЕЕ σ; FUSED_ALARM=2.375;
+                    evaluate_detection() → досимптомная + [-7,+2] + FA на scorable-днях
+  train.py          subject-level CV + калибровка + detection-блок в metrics.json
+  dataset.py        грузит stanford.csv (или синтетику); label из onset (окно [-3,+1])
+  whoop_client.py   Whoop v2 OAuth + backfill + to_daily_frame()
+  app.py            FastAPI: /evaluate /score-history /demo
+ml-service/data/    build_stanford.py, stanford.csv, mishra2020_supplementary.xlsx
+ml-service/experiments/  run_experiments.py + README (4 эксперимента)
+ml-service/models/  model.joblib + metrics.json + roc.json
+web/app/            page.tsx (Connect), (app)/{today,replay,report}/page.tsx
+my_whoop_data_2026_07_10/   ЛИЧНЫЙ Whoop-экспорт (В .gitignore, НЕ коммитить)
 ```
 
 ---
 
-## 7. Эксперименты и находки (ml-service/experiments/)
+## 7. Что сделано в этой сессии (2026-07-10) — важно
 
-1. **Абляция по сигналам** (синтетика): детекция растёт с числом сигналов
-   (RHR→все: AUC 0.95→0.99, скачок при добавлении частоты дыхания). Честно:
-   синтетика чистая, читать ТРЕНД, не уровни. → низкий реальный AUC = ограничение
-   ОДНОГО канала, не метода. Настоящее многосигнальное доказательство — только на Whoop.
-2. **Warmup-свип**: `MIN_BASELINE_DAYS 14→12` вернул ранний эпизод (52%→56%) почти
-   без роста ложных тревог. Внедрено.
-3. **Фьюжн (негативный результат, НЕ внедрён)**: changepoint-состояние (CUSUM+HDI)
-   как признаки классификатора → AUC 0.53→0.49, хуже. Это нелинейная функция тех же
-   z-признаков, дерево уже её извлекает. Задокументировано как сигнал стресс-теста.
+**Аудит (36 агентов + адверсариальная проверка + собственный пересчёт)** вскрыл цифры,
+которые нельзя было подавать как есть, и три бага. Всё исправлено. Подробности —
+в памяти проекта `patient-zero-audit-findings.md`. Кратко:
+
+1. **Прогрев был удвоен** (24 дня вместо 12): MAD считалась от `(past - med)`, а он
+   NaN, пока `med` не определится. Ранние эпизоды были недостижимы **по построению**. Починено.
+2. **Порог слияния был СУММОЙ** по каналам → рос с их числом. Гейт, настроенный на
+   одноканальном Stanford, на 5 каналах Whoop горел постоянно (1 ЛТ/5 дней). Теперь
+   **взвешенное среднее** σ → один порог для 1 и 5 каналов. На Whoop: ЛТ 4→0.
+3. **Баг выбора порога классификатора** (`_threshold_for_false_alarm` шёл сверху вниз →
+   всегда max, ничего не срабатывало, `episode_sensitivity=0.0` текло в `/evaluate`). Починено.
+4. **Честная переформулировка:** ведущая метрика теперь **досимптомная** (тревога строго
+   ДО симптомов); знаменатель ЛТ очищен от дней прогрева.
+5. **Оценщик разброса выбран абляцией** (`lagged_mad`) на Stanford с критерием,
+   зафиксированным заранее. Эксперимент 4 воспроизводит.
+
+**Личный Whoop прогнан (`my_whoop_data_2026_07_10/`, 54 дня, 5 сигналов, 4.0 ремешок).**
+За день до первого симптома сигнал был явный: **RHR +2.7σ, HRV −4.7σ**, но детектор
+**промолчал** — среднее по 5 каналам размыло два кричащих (HDI 1.56 < порог 2.38). ЛТ = 0.
+**Порог под этот эпизод НЕ подкручивался** (это был бы тюнинг на n=1). Оговорка: в дневнике
+та же неделя помечена аллергией — возможно, не инфекция. Добавлено в README как честный пример.
 
 ---
 
 ## 8. Следующие шаги (по приоритету)
 
-### Шаг A — Личный Whoop-эпизод 🔴 (money-shot + техническое доказательство)
-- Подключить/экспортировать свой Whoop → найти реальную неделю болезни/перетрена →
-  заякорить replay на своём теле. **Безопаснее снапшот, чем живой OAuth.**
-- Двойная польза: у Whoop есть частота дыхания/HRV/темп → **единственный честный
-  способ показать, что модель сильна на многосигнальных данных** (снять вопрос к AUC 0.53).
-- Зависит от пользователя: нужны данные/креды + «сигнальная» неделя в истории.
+### Шаг B — Деплой + Devpost-сабмишн 🔴 (главный сейчас; Presentation 15% + Design 15%)
+- web → Vercel, ML → Render/Railway/HF Space; прописать `ML_SERVICE_URL` в env.
+  **Важно:** `model.joblib` должен доехать как артефакт деплоя, иначе сервис молча уйдёт на синтетику.
+- Живой публичный end-to-end линк. Front-load cold-start ML-хоста — единственная реальная неизвестность.
+- README уже честный ✅. Осталось: видео 60–90 сек, скриншоты 4 экранов, описание
+  (Problem / Solution / Key Features / Tech / Target Users), демо-линк.
+- Сабмитить за ~2 дня до дедлайна (цель ~29 июля).
 
-### Шаг B — Деплой + Devpost-сабмишн (Presentation 15%, дёшево)
-- web → Vercel, ML → Render/Railway; `ML_SERVICE_URL` в env.
-- Видео 60–90 сек, README с архитектурой + честными метриками, скриншоты 4 экранов,
-  описание (Problem/Solution/Features/Tech/Users), живой демо-линк.
-- Сабмитить за 2 дня до дедлайна.
+### Мелочи (дёшево, поднимают доверие)
+- Доверительные интервалы в Report (досимпт. 30%, 95% ДИ [16%, 48%]).
+- Дисклеймер «рабочая точка выбрана на этой же когорте» уже на Report ✅.
+
+### Открытая исследовательская задача (не блокер сабмишна)
+- **Правило слияния 5 каналов не валидировано** — одноканальный Stanford не отличает
+  среднее от суммы/максимума. Личный Whoop показал, что среднее размывает 2 сильных мовера.
+  Варианты: top-k среди каналов, max, или требовать сильный одиночный сигнал ИЛИ слабый общий.
+  Проверять честно можно только на многоканальной когорте / нескольких своих эпизодах. **Не тюнить на n=1.**
 
 ### (стретч) Живой Whoop OAuth + webhook
-- Отложено: самый хрупкий кусок для живой демонстрации, мало очков. Код готов.
+- Отложено: хрупкий кусок для живой демо, мало очков. Код готов в `whoop_client.py`.
 
 ---
 
 ## 9. Честность / безопасность (держать в питче)
-- Не медицинский прибор. Вывод — физиологический флаг, не диагноз.
-- Все числа — на held-out публичных субъектах Stanford (один канал RHR);
-  Whoop-скор = демонстрация переноса, не валидированная персональная точность.
-- Синтетические числа оптимистичны — показывать реальные: 56% / 3 дня / ~1-на-33.
-- Многосигнальную силу НЕ заявлять как реальную цифру, пока не прогнан личный Whoop.
+- **Не медицинский прибор.** Вывод — физиологический флаг, не диагноз.
+- Все числа — на held-out публичных субъектах Stanford, один канал RHR. Рабочая точка
+  детектора выбрана на той же когорте (раскрыто на Report).
+- Ведущая цифра — **досимптомная** (тревога ДО симптомов). Окно ±2 дня показываем как контекст.
+- **Многосигнальную силу НЕ заявлять** — на одноканальной когорте её не проверить.
+- Baseline каузальный (без заглядывания вперёд) — опережение реально в real-time.
 
 ## 10. Заметки окружения
-- **venv в ОСНОВНОМ репо** `/Users/david/ML-Empowerment-Build-Challenge-2.0/ml-service/.venv`,
-  НЕ в worktree. Python 3.13, Node 24. Есть pandas/sklearn/openpyxl.
-- Нет Homebrew/libomp → xgboost не грузится, train.py падает на sklearn
+- **venv:** `/Users/david/ML-Empowerment-Build-Challenge-2.0/ml-service/.venv`. Python 3.13, Node 24.
+- Нет Homebrew/libomp → xgboost не грузится, `train.py` падает на sklearn
   `HistGradientBoostingClassifier` (тоже настоящий gradient boosting). Ок.
-- Обучение/скоринг офлайн; интернет нужен только для разового скачивания данных и npm install.
-- git: только initial commit, дальнейшее не закоммичено.
+- git: `main` = 5 коммитов, синхронно с публичным origin. Личный Whoop-экспорт в `.gitignore`.
+- Данные и сборка Stanford — офлайн; интернет нужен только для деплоя, `npm install`, `git push`.
