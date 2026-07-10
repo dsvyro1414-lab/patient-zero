@@ -1,0 +1,12 @@
+# Backup deploy target for the ML service (Render free tier).
+# Primary deploy is Railway; this lets you switch to Render's free plan by
+# connecting this repo in the Render dashboard — no code changes needed.
+services:
+  - type: web
+    name: patient-zero-ml
+    runtime: python
+    rootDir: ml-service
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app:app --app-dir src --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health

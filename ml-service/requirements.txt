@@ -1,10 +1,13 @@
 numpy>=1.26
 pandas>=2.1
 scikit-learn>=1.4
-xgboost>=2.0
 scipy>=1.11
 fastapi>=0.110
 uvicorn[standard]>=0.29
 pydantic>=2.6
 requests>=2.31
 joblib>=1.3
+openpyxl>=3.1
+# xgboost is intentionally omitted: the served model.joblib is a calibrated
+# sklearn HistGradientBoosting model, and train.py falls back to it when xgboost
+# is absent — so the deploy stays slim and the committed metrics reproduce exactly.
