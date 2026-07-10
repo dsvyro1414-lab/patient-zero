@@ -37,6 +37,12 @@ dataset (or your Whoop) provides them.
 
 ## Honest note on metrics
 
-Synthetic data is clean, so it yields optimistic AUC (~0.99). On the real
-Stanford data expect **AUC ≈ 0.75–0.85** with a **median lead time of 1–3 days** —
-that is the honest, defensible number to report in the submission.
+The headline is the **changepoint detector**, not the classifier. On the real
+Stanford cohort it flags **8/27 COVID episodes (30%) before symptoms**, median
+lead **5 days**, at ~1 false alarm per 31 healthy days (see `../models/metrics.json`).
+
+The gradient-boosted classifier is a **secondary** layer: on single-channel
+resting HR it only reaches **AUC ≈ 0.55**, near chance. That is a limit of one
+noisy channel, not of the method — and we report it as-is rather than hide it.
+Synthetic data is clean and yields an optimistic ~0.99, which is why the numbers
+that matter come from the real cohort.
