@@ -107,7 +107,9 @@ export default async function ReportPage() {
               {real ? "Проверено на публичном датасете Stanford" : "Проверено на синтетических демо-данных"}
             </div>
             <div className="muted text-sm">
-              N = {m.subjects.toLocaleString()} субъектов · held-out по субъектам
+              N = {m.subjects.toLocaleString()} субъектов
+              {det ? ` · ${det.n_episodes} эпизодов COVID` : ""} · held-out по субъектам
+              {" "}— у классификатора (GroupKFold)
             </div>
           </div>
         </div>
