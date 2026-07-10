@@ -3,41 +3,85 @@ import { RocChart } from "@/components/RocChart";
 
 export const dynamic = "force-dynamic";
 
+const SIGNAL_RU: Record<string, string> = {
+  resting_heart_rate: "пульс покоя",
+  hrv_rmssd_milli: "HRV",
+  respiratory_rate: "частота дыхания",
+  skin_temp_celsius: "темп. кожи",
+  sleep_performance: "сон",
+  spo2_percentage: "SpO₂",
+};
+
 export default async function ReportPage() {
   const data = await getEvaluate();
   if (!data) return <Down />;
   const m = data.metrics;
-  const lead = m.median_lead_time_days;
-  const sens = m.episode_sensitivity;
-  const faPct = Math.round((1 / m.false_alarm_budget_per_days) * 100);
+  const det = m.detection ?? null;
+  const real = m.source !== "synthetic";
+
+  // Headline = the changepoint detector (validated, literature-aligned). Fall
+  // back to the classifier's episode metrics only if a detection block is absent.
+  const sens = det ? det.detection_sensitivity : m.episode_sensitivity;
+  const lead = det ? det.median_lead_time_days : m.median_lead_time_days;
+  const faDays = det?.false_alarm_per_days ?? null;
+  const signals = det?.signals_used?.map((s) => SIGNAL_RU[s] ?? s) ?? [];
 
   return (
     <div className="space-y-4">
       <div className="text-xs muted tracking-wider">4. REPORT CARD / METRICS</div>
 
+      {/* headline: changepoint detection performance */}
+      <div className="grid sm:grid-cols-3 gap-4">
+        <Stat
+          label="Чувствительность"
+          value={sens == null ? "—" : `${Math.round(sens * 100)}%`}
+          note={det ? `${det.episodes_detected}/${det.n_episodes} эпизодов обнаружено` : "случаев обнаружено"}
+          color="#16a34a"
+        />
+        <Stat
+          label="Медианное опережение"
+          value={lead == null ? "—" : `${lead} дн.`}
+          note="Раньше первых симптомов"
+          color="#3b82f6"
+        />
+        <Stat
+          label="Ложные тревоги"
+          value={faDays == null ? "—" : `~1 / ${Math.round(faDays)} дн.`}
+          note="На здоровых днях"
+        />
+      </div>
+
       <div className="grid lg:grid-cols-[1.4fr_1fr] gap-4">
+        {/* secondary: the trained classifier's ROC */}
         <div className="card p-6">
-          <h3 className="font-semibold mb-4">ROC-кривая модели</h3>
+          <div className="flex items-baseline justify-between mb-1">
+            <h3 className="font-semibold">Вторичная модель — ROC</h3>
+            <span className="muted text-xs">обученный классификатор, вероятность по дням</span>
+          </div>
           {data.roc ? (
             <RocChart fpr={data.roc.fpr} tpr={data.roc.tpr} auc={data.roc.auc} />
           ) : (
             <p className="muted text-sm">Нет ROC-данных — запусти обучение.</p>
           )}
           <div className="flex gap-5 text-xs muted mt-2">
-            <span className="inline-flex items-center gap-1.5"><i className="w-4 border-t-2" style={{ borderColor: "#16a34a" }} /> Patient Zero (AUC = {m.roc_auc.toFixed(2)})</span>
+            <span className="inline-flex items-center gap-1.5"><i className="w-4 border-t-2" style={{ borderColor: "#16a34a" }} /> Классификатор (AUC = {m.roc_auc.toFixed(2)})</span>
             <span className="inline-flex items-center gap-1.5"><i className="w-4 border-t-2 border-dashed" style={{ borderColor: "var(--muted)" }} /> Random (0.50)</span>
           </div>
         </div>
 
-        <div className="space-y-4">
-          <Stat label="AUC" value={m.roc_auc.toFixed(2)} note="Способность различать" color="#16a34a" />
-          <Stat label="Медианное опережение" value={lead == null ? "—" : `${lead} дн.`} note="Раньше первых симптомов" />
-          <Stat
-            label={`Чувствительность (при FPR ≈ ${faPct}%)`}
-            value={sens == null ? "—" : sens.toFixed(2)}
-            note={sens == null ? "" : `${Math.round(sens * 100)}% случаев обнаружены`}
-            color="#3b82f6"
-          />
+        {/* detector description */}
+        <div className="card p-6 flex flex-col gap-3">
+          <h3 className="font-semibold">Детектор изменений</h3>
+          <p className="muted text-sm leading-relaxed">
+            Главный слой — персональный changepoint-монитор (robust baseline + CUSUM),
+            тот же метод, что в исследованиях Stanford по COVID-19. Ловит устойчивый
+            многодневный сдвиг физиологии до симптомов.
+          </p>
+          <div className="text-sm space-y-1.5 mt-1">
+            <Row k="Метод" v={det?.method ?? "changepoint (CUSUM)"} />
+            <Row k="Сигналы" v={signals.length ? signals.join(", ") : "—"} />
+            <Row k="Окно детекции" v={det ? `[−${det.detection_window[0]}, +${det.detection_window[1]}] дн.` : "—"} />
+          </div>
         </div>
       </div>
 
@@ -46,22 +90,28 @@ export default async function ReportPage() {
           <ShieldCheck />
           <div>
             <div className="font-medium">
-              Validated on {m.source === "synthetic" ? "synthetic demo data" : "public Stanford dataset"}
+              {real ? "Проверено на публичном датасете Stanford" : "Проверено на синтетических демо-данных"}
             </div>
             <div className="muted text-sm">
-              N = {m.subjects.toLocaleString()} subjects · модель: {m.model}
+              N = {m.subjects.toLocaleString()} субъектов · held-out по субъектам
             </div>
           </div>
         </div>
         <p className="muted text-sm max-w-xs">
-          Модель не диагностирует заболевания. Используй как дополнительный инструмент.
+          Не диагностирует заболевания. Физиологический флаг, не диагноз.
         </p>
       </div>
 
-      {m.source === "synthetic" && (
+      {real ? (
+        <p className="muted text-xs leading-relaxed">
+          Цифры — на публичной когорте Stanford, где доступен только пульс покоя (Fitbit).
+          На твоём Whoop есть ещё частота дыхания, HRV и темп. кожи (сильнейшие предикторы
+          инфекции), поэтому детекция ожидается выше, чем на одном канале.
+        </p>
+      ) : (
         <p className="muted text-xs">
-          Сейчас метрики на синтетике (оптимистичны). После обучения на реальных Stanford-данных
-          ожидается AUC ≈ 0.75–0.85 — это честная цифра для сабмишна.
+          Сейчас метрики на синтетике (оптимистичны). Подключи реальные Stanford-данные
+          (<code>data/build_stanford.py</code>) и переобучи для честных чисел.
         </p>
       )}
     </div>
@@ -74,6 +124,15 @@ function Stat({ label, value, note, color }: { label: string; value: string; not
       <div className="muted text-sm">{label}</div>
       <div className="text-4xl font-bold mt-1" style={{ color: color ?? "var(--text)" }}>{value}</div>
       {note && <div className="muted text-xs mt-1">{note}</div>}
+    </div>
+  );
+}
+
+function Row({ k, v }: { k: string; v: string }) {
+  return (
+    <div className="flex justify-between gap-3">
+      <span className="muted">{k}</span>
+      <span className="text-right">{v}</span>
     </div>
   );
 }

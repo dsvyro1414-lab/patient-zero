@@ -39,6 +39,7 @@ except Exception:
 
 from dataset import load
 from features import build_features, feature_columns
+from changepoint import evaluate_detection
 
 MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "models")
 DETECT_WINDOW = (7, 1)        # detect an episode if flagged within [onset-7, onset+1]
@@ -153,6 +154,19 @@ def train(source: str = "auto") -> dict:
     fpr, tpr, _ = roc_curve(y, oof)
     idx = np.linspace(0, len(fpr) - 1, min(120, len(fpr))).astype(int)
 
+    # Changepoint detector metrics — the honest, literature-aligned headline the
+    # Report card leads with. Evaluated on the FULL raw series (not the
+    # feature-warmup-trimmed rows) so lead time and false alarms are realistic.
+    # The trained classifier below is the secondary, calibrated layer.
+    detection = evaluate_detection(raw)
+    sens = detection["detection_sensitivity"]
+    sens_str = "n/a" if sens is None else f"{sens:.0%}"
+    print(f"[detection] changepoint: {detection['episodes_detected']}/"
+          f"{detection['n_episodes']} episodes ({sens_str}), "
+          f"median_lead={detection['median_lead_time_days']}d, "
+          f"~1 false alarm / {detection['false_alarm_per_days']} days "
+          f"[signals: {', '.join(detection['signals_used'])}]")
+
     metrics = {
         "source": src,
         "model": MODEL_KIND,
@@ -164,6 +178,7 @@ def train(source: str = "auto") -> dict:
         "false_alarm_budget_per_days": FALSE_ALARM_PER_DAYS,
         "operating_threshold": round(thr, 4),
         "healthy_false_alarm_rate": round(fa_rate, 4),
+        "detection": detection,
         **ep,
     }
     print(f"[metrics] AUC={metrics['roc_auc']}  "

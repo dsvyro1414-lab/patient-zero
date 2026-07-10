@@ -21,6 +21,19 @@ export interface DemoResult {
   records: DayRecord[];
 }
 
+export interface Detection {
+  method: string;
+  signals_used: string[];
+  n_episodes: number;
+  episodes_detected: number;
+  detection_sensitivity: number | null;
+  median_lead_time_days: number | null;
+  mean_lead_time_days: number | null;
+  false_alarm_rate_per_day: number;
+  false_alarm_per_days: number | null;
+  detection_window: [number, number];
+}
+
 export interface Metrics {
   source: string;
   model: string;
@@ -32,6 +45,7 @@ export interface Metrics {
   median_lead_time_days: number | null;
   healthy_false_alarm_rate: number;
   false_alarm_budget_per_days: number;
+  detection?: Detection | null;
 }
 
 export interface EvaluateResult {

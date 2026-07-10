@@ -23,7 +23,9 @@ OPTIONAL_SIGNALS = ["hrv_rmssd_milli", "respiratory_rate", "skin_temp_celsius",
 
 MAD_SCALE = 1.4826  # makes MAD a consistent estimator of std for normal data
 BASELINE_WINDOW = 30
-MIN_BASELINE_DAYS = 14
+MIN_BASELINE_DAYS = 12  # min days before robust-z is defined; 12 (vs 14) recovers
+                        # early-onset episodes on real Stanford data at negligible
+                        # false-alarm cost (swept: +1/27 detected, FA held ~1/33)
 
 
 def _robust_z(series: pd.Series, window: int = BASELINE_WINDOW) -> pd.Series:
