@@ -16,7 +16,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from features import MAD_SCALE, BASELINE_WINDOW, MIN_BASELINE_DAYS
+from features import robust_z as _causal_robust_z
 
 # signals that RISE during illness, and HRV which DROPS (entered as -z)
 RISE_SIGNALS = ["respiratory_rate", "resting_heart_rate", "skin_temp_celsius"]
@@ -28,23 +28,20 @@ WEIGHTS = {"respiratory_rate": 1.6, "resting_heart_rate": 1.2,
 
 CUSUM_SLACK = 0.5   # k: ignore drifts smaller than half a std
 CUSUM_LIMIT = 4.0   # h: alarm when accumulated deviation exceeds this
-FUSED_ALARM = 4.5   # fused index threshold (tuned on real Stanford data with
-                    # MIN_BASELINE_DAYS=12: ~1 false alarm per 33 healthy days at
-                    # 15/27 = 56% episode detection, 3-day median lead)
+FUSED_ALARM = 2.375  # HDI is now a WEIGHTED MEAN of per-signal sigma deviations, so
+                     # this gate reads directly in sigma and transfers across devices
+                     # with different channel counts. Selected on the Stanford cohort
+                     # (27 episodes) under a pre-committed rule: hold false alarms at
+                     # <= 1 per 30 SCORABLE healthy days, then maximise pre-symptomatic
+                     # sensitivity. Yields 16/27 detected, 8/27 (30%) with a genuine
+                     # pre-symptomatic alarm at 5-day median lead, 1 FA per 30.6 days.
+                     # Selected on the same cohort it is reported on — see README.
 MIN_CORROBORATING = 2  # require >=2 signals moving together (when >=2 exist)
 MIN_RUN = 1         # require the alarm condition to hold this many days in a row
 
 # detection-evaluation window: an alarm within [onset-PRE, onset+POST] counts as a catch
 DETECT_PRE = 7
 DETECT_POST = 2
-
-
-def _causal_robust_z(x: pd.Series) -> pd.Series:
-    past = x.shift(1)
-    med = past.rolling(BASELINE_WINDOW, min_periods=MIN_BASELINE_DAYS).median()
-    mad = (past - med).abs().rolling(BASELINE_WINDOW, min_periods=MIN_BASELINE_DAYS).median()
-    spread = (MAD_SCALE * mad).replace(0, np.nan)
-    return (x - med) / spread
 
 
 def _cusum(z: np.ndarray, slack: float = CUSUM_SLACK) -> np.ndarray:
@@ -76,34 +73,44 @@ def analyze(history: pd.DataFrame, *, cusum_slack: float = CUSUM_SLACK,
     present_rise = [s for s in RISE_SIGNALS if s in df.columns]
     present_drop = [s for s in DROP_SIGNALS if s in df.columns]
 
-    contribs = pd.DataFrame(index=df.index)
+    # devs = each signal's deviation in its own sigma units, in the "worse" direction.
+    # Keep this separate from the weighted contribution so that corroboration counts
+    # signals on a common 1-sigma scale rather than on their weights.
+    devs = pd.DataFrame(index=df.index)
     for sig in present_rise:
         z = _causal_robust_z(df[sig])
         df[f"z_{sig}"] = z
         df[f"cusum_{sig}"] = _cusum(z.values, cusum_slack)
-        contribs[sig] = WEIGHTS[sig] * np.clip(z.values, 0, None)
+        devs[sig] = np.clip(z.values, 0, None)
     for sig in present_drop:
         z = _causal_robust_z(df[sig])
         df[f"z_{sig}"] = z
         df[f"cusum_{sig}"] = _cusum((-z).values, cusum_slack)  # HRV dropping == rising
-        contribs[sig] = WEIGHTS[sig] * np.clip(-z.values, 0, None)
+        devs[sig] = np.clip(-z.values, 0, None)
 
-    df["health_deviation_index"] = contribs.sum(axis=1).round(3)
-    corroborating = (contribs > 1.0).sum(axis=1)          # signals >1 sigma off
+    # HDI is a WEIGHTED MEAN of the per-signal sigma deviations, not a sum. A sum
+    # grows with the number of biomarkers present, so a threshold tuned on
+    # single-channel data (Stanford Fitbit = resting HR only) fires constantly on
+    # five-channel Whoop data. Dividing by the present weights puts one-channel and
+    # five-channel subjects on the same scale, so ONE operating point transfers.
+    present = present_rise + present_drop
+    total_weight = sum(WEIGHTS[s] for s in present) or 1.0
+    contribs = devs.mul({s: WEIGHTS[s] for s in present})
+    df["health_deviation_index"] = (contribs.sum(axis=1) / total_weight).round(3)
+
+    corroborating = (devs > 1.0).sum(axis=1)          # signals >1 sigma off
     cusum_cols = [c for c in df.columns if c.startswith("cusum_")]
     any_cusum = ((df[cusum_cols] > cusum_limit).any(axis=1) if cusum_cols
                  else pd.Series(False, index=df.index))
 
-    # Adapt to how many biomarkers are actually present. Multi-signal Whoop data
-    # can demand corroboration across channels; single-signal public data (e.g.
-    # Stanford Fitbit = resting HR only) must alarm on the one channel it has —
-    # this is exactly the RHR-Diff regime from the COVID-19 wearables papers.
-    n_signals = len(present_rise) + len(present_drop)
+    # Multi-signal Whoop data can demand corroboration across channels; single-signal
+    # public data must alarm on the one channel it has — this is exactly the RHR-Diff
+    # regime from the COVID-19 wearables papers.
+    n_signals = len(present)
     min_corr = min(min_corroborating, max(1, n_signals))
-    hdi_gate = fused_alarm * min_corr / MIN_CORROBORATING   # scale gate to signal count
 
     raw = (
-        (df["health_deviation_index"] >= hdi_gate)
+        (df["health_deviation_index"] >= fused_alarm)
         & (corroborating >= min_corr)
         & any_cusum
     )
@@ -126,10 +133,15 @@ def evaluate_detection(df: pd.DataFrame, onset_col: str = "onset",
     Honest per-episode detection metrics for the changepoint monitor — the
     number the Report card should lead with (the classifier is secondary).
 
-    An episode is "detected" if an alarm fires within [onset-pre, onset+post];
-    lead time = onset - first such alarm day (positive = early warning). False
-    alarms are counted on healthy days (outside [onset-pre, onset+post+recover]
-    for illness subjects; every day for never-ill subjects).
+    An episode is "detected" if an alarm fires within [onset-pre, onset+post].
+    Because post > 0 that INCLUDES alarms firing after symptoms began, so we also
+    report `presymptomatic_*`: episodes whose first in-window alarm has lead >= 1.
+    That is the number matching the product promise ("warns before symptoms").
+
+    False alarms are counted only on SCORABLE healthy days — days outside
+    [onset-pre, onset+post+recover] on which the detector's robust-z is actually
+    defined. Baseline-warmup days cannot alarm by construction, so counting them
+    in the denominator would deflate the false-alarm rate.
     """
     signals = [c for c in (RISE_SIGNALS + DROP_SIGNALS) if c in df.columns]
     onsets = ({r.subject_id: int(r.day_index)
@@ -140,6 +152,7 @@ def evaluate_detection(df: pd.DataFrame, onset_col: str = "onset",
     for sid, g in df.groupby("subject_id"):
         res = analyze(g[["day_index"] + signals].copy(), **params)
         alarms = res.loc[res["alarm"], "day_index"].tolist()
+        scorable = res[[f"z_{s}" for s in signals]].notna().any(axis=1)
         if sid in onsets:
             od = onsets[sid]
             total += 1
@@ -150,10 +163,14 @@ def evaluate_detection(df: pd.DataFrame, onset_col: str = "onset",
             mask = ~res["day_index"].between(od - pre, od + post + recover)
         else:
             mask = pd.Series(True, index=res.index)
+        mask &= scorable
         healthy += int(mask.sum())
         fa += int((res["alarm"] & mask).sum())
 
+    leads_arr = np.array(leads, dtype=float)
+    early = leads_arr[leads_arr >= 1]
     sens = detected / total if total else None
+    pre_sens = len(early) / total if total else None
     fa_rate = fa / healthy if healthy else 0.0
     return {
         "method": "changepoint (RHR-Diff / CUSUM)",
@@ -161,10 +178,15 @@ def evaluate_detection(df: pd.DataFrame, onset_col: str = "onset",
         "n_episodes": total,
         "episodes_detected": detected,
         "detection_sensitivity": round(sens, 3) if sens is not None else None,
+        "episodes_presymptomatic": len(early),
+        "presymptomatic_sensitivity": round(pre_sens, 3) if pre_sens is not None else None,
+        "median_lead_presymptomatic_days": float(np.median(early)) if early.size else None,
         "median_lead_time_days": float(np.median(leads)) if leads else None,
         "mean_lead_time_days": round(float(np.mean(leads)), 2) if leads else None,
         "false_alarm_rate_per_day": round(fa_rate, 4),
         "false_alarm_per_days": round(1 / fa_rate, 1) if fa_rate > 0 else None,
+        "false_alarms": fa,
+        "scorable_healthy_days": healthy,
         "detection_window": [pre, post],
     }
 

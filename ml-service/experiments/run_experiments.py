@@ -77,15 +77,55 @@ def baseline_warmup() -> None:
     orig = features.MIN_BASELINE_DAYS
     print(f"   {'MIN_BASELINE_DAYS':<20}{'detect':>9}{'lead':>7}{'FA/days':>9}")
     for mbd in (14, 12, 10, 8):
-        features.MIN_BASELINE_DAYS = mbd
-        changepoint.MIN_BASELINE_DAYS = mbd
+        features.MIN_BASELINE_DAYS = mbd   # changepoint reads it through features.robust_z
         det = changepoint.evaluate_detection(real)
         d = f"{det['episodes_detected']}/{det['n_episodes']}"
         fa = f"~1/{det['false_alarm_per_days']}"
         star = "  <- shipped" if mbd == 12 else ""
         print(f"   {mbd:<20}{d:>9}{str(det['median_lead_time_days']):>7}{fa:>9}{star}")
     features.MIN_BASELINE_DAYS = orig
-    changepoint.MIN_BASELINE_DAYS = orig
+
+
+def spread_estimator() -> None:
+    """Which robust scale estimator to normalise each signal by.
+
+    Selection rule, fixed before looking: hold false alarms at <= 1 per 30 SCORABLE
+    healthy days, then maximise PRE-SYMPTOMATIC sensitivity (alarm strictly before
+    the first symptom), ties broken by median pre-symptomatic lead, then lower gate.
+    """
+    print("\n== 4. SPREAD-ESTIMATOR ABLATION (real Stanford, RHR only) ==")
+    real = pd.read_csv(DATA)
+    orig = features.SPREAD_ESTIMATOR
+    budget = 30.0
+    print(f"   {'estimator':<12}{'gate':>7}{'detect':>9}{'presympt':>10}{'p-lead':>8}{'FA/days':>9}")
+    for est in ("window_mad", "diff_mad", "lagged_mad"):
+        features.SPREAD_ESTIMATOR = est
+        best = None
+        for gate in [x / 1000 for x in range(750, 6001, 125)]:
+            det = changepoint.evaluate_detection(real, fused_alarm=gate)
+            fa = det["false_alarm_per_days"]
+            if fa is None or fa < budget:
+                continue
+            key = (det["presymptomatic_sensitivity"] or 0,
+                   det["median_lead_presymptomatic_days"] or 0, -gate)
+            if best is None or key > best[0]:
+                best = (key, gate, det)
+        if best is None:
+            print(f"   {est:<12}{'—':>7}   (no config inside the false-alarm budget)")
+            continue
+        _, gate, det = best
+        d = f"{det['episodes_detected']}/{det['n_episodes']}"
+        p = f"{det['episodes_presymptomatic']}/{det['n_episodes']}"
+        star = "  <- shipped" if est == "lagged_mad" else ""
+        print(f"   {est:<12}{gate:>7.3f}{d:>9}{p:>10}"
+              f"{str(det['median_lead_presymptomatic_days']):>8}"
+              f"{'~1/' + str(det['false_alarm_per_days']):>9}{star}")
+    features.SPREAD_ESTIMATOR = orig
+    print("   -> the textbook window-MAD inflates while a signal ramps, which shrinks z")
+    print("      exactly during the multi-day illness ramp. Deviations from the running")
+    print("      median (lagged_mad) stay small under drift and catch the ramp earlier.")
+    print("   NOTE: single-channel data cannot separate the multi-signal FUSION rule —")
+    print("      mean, sum and max are identical when only one signal is present.")
 
 
 def fusion() -> None:
@@ -115,4 +155,5 @@ def fusion() -> None:
 if __name__ == "__main__":
     ablation()
     baseline_warmup()
+    spread_estimator()
     fusion()

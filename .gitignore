@@ -27,3 +27,7 @@ web/out/
 # os
 .DS_Store
 .gstack/
+
+# personal health data — never commit
+my_whoop_data_*/
+my_whoop_data_*.zip

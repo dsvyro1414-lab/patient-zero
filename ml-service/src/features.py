@@ -23,20 +23,66 @@ OPTIONAL_SIGNALS = ["hrv_rmssd_milli", "respiratory_rate", "skin_temp_celsius",
 
 MAD_SCALE = 1.4826  # makes MAD a consistent estimator of std for normal data
 BASELINE_WINDOW = 30
-MIN_BASELINE_DAYS = 12  # min days before robust-z is defined; 12 (vs 14) recovers
-                        # early-onset episodes on real Stanford data at negligible
-                        # false-alarm cost (swept: +1/27 detected, FA held ~1/33)
+MIN_BASELINE_DAYS = 12  # days of personal history before robust-z is defined.
+                        # This is now the TRUE warmup: see robust_z(). It used to
+                        # be 2x this because MAD was taken about a lagged median.
 
 
-def _robust_z(series: pd.Series, window: int = BASELINE_WINDOW) -> pd.Series:
+# How the personal spread (sigma) is estimated from the trailing window:
+#   "window_mad" — textbook MAD about the window median. Inflates while a signal
+#                  is ramping, which shrinks z exactly during a multi-day illness
+#                  ramp — the regime we care about.
+#   "diff_mad"   — MAD of successive differences, rescaled. Trend-robust by
+#                  construction (a linear drift cancels in the differences), the
+#                  standard robust scale for changepoint work. Default.
+#   "lagged_mad" — MAD of each past day's residual from its OWN trailing median,
+#                  i.e. the scale of the one-step-ahead innovation. Also trend-
+#                  robust, and smoother than diff_mad.
+SPREAD_ESTIMATOR = "lagged_mad"
+_DIFF_SCALE = np.sqrt(2.0)   # median|x_t - x_{t-1}| = 0.6745 * sigma * sqrt(2)
+MIN_SPREAD_DAYS = 3          # residuals needed before the innovation scale is trusted
+
+
+def _window_mad(window_values: np.ndarray) -> float:
+    """Median absolute deviation about the window's own median, ignoring gaps."""
+    w = window_values[~np.isnan(window_values)]
+    if w.size == 0:
+        return np.nan
+    return float(np.median(np.abs(w - np.median(w))))
+
+
+def _diff_mad(window_values: np.ndarray) -> float:
+    """Trend-robust scale: MAD of successive differences within the window."""
+    w = window_values[~np.isnan(window_values)]
+    if w.size < 2:
+        return np.nan
+    return float(np.median(np.abs(np.diff(w))) / _DIFF_SCALE)
+
+
+def robust_z(series: pd.Series, window: int = BASELINE_WINDOW,
+             estimator: str = None) -> pd.Series:
     """Robust z-score of each day vs its own trailing window (shifted, causal)."""
     # shift(1) so today is scored against the PAST only — no leakage of today.
     past = series.shift(1)
     med = past.rolling(window, min_periods=MIN_BASELINE_DAYS).median()
-    mad = (past - med).abs().rolling(window, min_periods=MIN_BASELINE_DAYS).median()
-    spread = MAD_SCALE * mad
-    spread = spread.replace(0, np.nan)
+    # The spread must be computable as soon as `med` is. Deriving it from
+    # (past - med) instead makes it wait for `med` to exist first, so z only
+    # appears after 2 * MIN_BASELINE_DAYS — silently doubling the warmup and
+    # making early-onset episodes undetectable by construction.
+    est = estimator or SPREAD_ESTIMATOR
+    if est == "lagged_mad":
+        # residual of each past day from the baseline it was scored against; the
+        # deviations stay small while the signal drifts, which is what keeps the
+        # detector sensitive to a slow multi-day ramp.
+        mad = (past - med).abs().rolling(window, min_periods=MIN_SPREAD_DAYS).median()
+    else:
+        fn = _diff_mad if est == "diff_mad" else _window_mad
+        mad = past.rolling(window, min_periods=MIN_BASELINE_DAYS).apply(fn, raw=True)
+    spread = (MAD_SCALE * mad).replace(0, np.nan)
     return (series - med) / spread
+
+
+_robust_z = robust_z  # backwards-compatible alias
 
 
 def build_features(df: pd.DataFrame) -> pd.DataFrame:

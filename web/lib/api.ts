@@ -27,10 +27,16 @@ export interface Detection {
   n_episodes: number;
   episodes_detected: number;
   detection_sensitivity: number | null;
+  /** episodes whose first in-window alarm fired strictly BEFORE symptom onset */
+  episodes_presymptomatic: number;
+  presymptomatic_sensitivity: number | null;
+  median_lead_presymptomatic_days: number | null;
   median_lead_time_days: number | null;
   mean_lead_time_days: number | null;
   false_alarm_rate_per_day: number;
   false_alarm_per_days: number | null;
+  false_alarms: number;
+  scorable_healthy_days: number;
   detection_window: [number, number];
 }
 

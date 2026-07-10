@@ -72,15 +72,15 @@ def _threshold_for_false_alarm(prob: np.ndarray, healthy_mask: np.ndarray,
     healthy = prob[healthy_mask]
     if healthy.size == 0:
         return 0.5
-    # highest threshold whose healthy-day alarm rate <= target
+    # The false-alarm rate falls monotonically as the threshold rises, so the LOWEST
+    # threshold inside the budget is the one that actually spends it, and it is the
+    # most sensitive. Scanning from the top instead returns ~max(healthy_prob), where
+    # nothing ever fires and episode sensitivity is a meaningless 0.
     grid = np.unique(np.round(healthy, 4))
-    best = 1.0
-    for t in np.sort(grid)[::-1]:
-        fa = float(np.mean(healthy >= t))
-        if fa <= target_fa:
-            best = float(t)
-            break
-    return best
+    for t in np.sort(grid):
+        if float(np.mean(healthy >= t)) <= target_fa:
+            return float(t)
+    return 1.0
 
 
 def _episode_metrics(df: pd.DataFrame, prob: np.ndarray, thr: float) -> dict:

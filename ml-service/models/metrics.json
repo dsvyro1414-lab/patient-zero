@@ -1,9 +1,9 @@
 {
   "source": "stanford",
   "model": "HistGradientBoosting",
-  "subjects": 115,
-  "usable_rows": 5782,
-  "positives": 111,
+  "subjects": 116,
+  "usable_rows": 6812,
+  "positives": 124,
   "features": [
     "z_resting_heart_rate",
     "z_resting_heart_rate_d1",
@@ -11,30 +11,35 @@
     "z_resting_heart_rate_d3",
     "z_resting_heart_rate_slope3"
   ],
-  "roc_auc": 0.534,
+  "roc_auc": 0.545,
   "false_alarm_budget_per_days": 14.0,
-  "operating_threshold": 0.9496,
-  "healthy_false_alarm_rate": 0.0,
+  "operating_threshold": 0.4454,
+  "healthy_false_alarm_rate": 0.0712,
   "detection": {
     "method": "changepoint (RHR-Diff / CUSUM)",
     "signals_used": [
       "resting_heart_rate"
     ],
     "n_episodes": 27,
-    "episodes_detected": 15,
-    "detection_sensitivity": 0.556,
-    "median_lead_time_days": 3.0,
-    "mean_lead_time_days": 2.93,
-    "false_alarm_rate_per_day": 0.0304,
-    "false_alarm_per_days": 32.9,
+    "episodes_detected": 16,
+    "detection_sensitivity": 0.593,
+    "episodes_presymptomatic": 8,
+    "presymptomatic_sensitivity": 0.296,
+    "median_lead_presymptomatic_days": 5.0,
+    "median_lead_time_days": 1.5,
+    "mean_lead_time_days": 2.19,
+    "false_alarm_rate_per_day": 0.0327,
+    "false_alarm_per_days": 30.6,
+    "false_alarms": 215,
+    "scorable_healthy_days": 6576,
     "detection_window": [
       7,
       2
     ]
   },
-  "episode_sensitivity": 0.0,
-  "median_lead_time_days": null,
-  "mean_lead_time_days": null,
-  "n_episodes": 23,
-  "episodes_caught": 0
+  "episode_sensitivity": 0.48,
+  "median_lead_time_days": 3.5,
+  "mean_lead_time_days": 2.92,
+  "n_episodes": 25,
+  "episodes_caught": 12
 }

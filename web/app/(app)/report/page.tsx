@@ -19,10 +19,12 @@ export default async function ReportPage() {
   const det = m.detection ?? null;
   const real = m.source !== "synthetic";
 
-  // Headline = the changepoint detector (validated, literature-aligned). Fall
-  // back to the classifier's episode metrics only if a detection block is absent.
-  const sens = det ? det.detection_sensitivity : m.episode_sensitivity;
-  const lead = det ? det.median_lead_time_days : m.median_lead_time_days;
+  // Headline = the detector's PRE-SYMPTOMATIC performance: episodes flagged strictly
+  // before the first symptom. The wider [-7,+2] window also counts alarms firing up to
+  // two days AFTER onset, which is not what the product promises, so that number is
+  // reported as context below rather than as the headline.
+  const sens = det ? det.presymptomatic_sensitivity : m.episode_sensitivity;
+  const lead = det ? det.median_lead_presymptomatic_days : m.median_lead_time_days;
   const faDays = det?.false_alarm_per_days ?? null;
   const signals = det?.signals_used?.map((s) => SIGNAL_RU[s] ?? s) ?? [];
 
@@ -33,23 +35,35 @@ export default async function ReportPage() {
       {/* headline: changepoint detection performance */}
       <div className="grid sm:grid-cols-3 gap-4">
         <Stat
-          label="Чувствительность"
+          label="Досимптомная чувствительность"
           value={sens == null ? "—" : `${Math.round(sens * 100)}%`}
-          note={det ? `${det.episodes_detected}/${det.n_episodes} эпизодов обнаружено` : "случаев обнаружено"}
+          note={det ? `${det.episodes_presymptomatic}/${det.n_episodes} эпизодов пойманы ДО симптомов` : "случаев обнаружено"}
           color="#16a34a"
         />
         <Stat
           label="Медианное опережение"
           value={lead == null ? "—" : `${lead} дн.`}
-          note="Раньше первых симптомов"
+          note="Среди досимптомных срабатываний"
           color="#3b82f6"
         />
         <Stat
           label="Ложные тревоги"
           value={faDays == null ? "—" : `~1 / ${Math.round(faDays)} дн.`}
-          note="На здоровых днях"
+          note={det ? `${det.false_alarms} на ${det.scorable_healthy_days} оцениваемых здоровых дней` : "На здоровых днях"}
         />
       </div>
+
+      {det && (
+        <p className="muted text-xs leading-relaxed">
+          Для полноты: в окне [−{det.detection_window[0]}, +{det.detection_window[1]}] дн.
+          вокруг онсета детектор помечает {det.episodes_detected}/{det.n_episodes} эпизодов
+          ({Math.round((det.detection_sensitivity ?? 0) * 100)}%) с медианой опережения{" "}
+          {det.median_lead_time_days} дн. Это окно засчитывает и тревоги, сработавшие уже
+          после первых симптомов, поэтому ведущей цифрой мы держим досимптомную. Дни
+          прогрева персонального baseline исключены из знаменателя ложных тревог: в них
+          тревога невозможна по построению. Рабочая точка выбрана на этой же когорте.
+        </p>
+      )}
 
       <div className="grid lg:grid-cols-[1.4fr_1fr] gap-4">
         {/* secondary: the trained classifier's ROC */}
@@ -105,8 +119,9 @@ export default async function ReportPage() {
       {real ? (
         <p className="muted text-xs leading-relaxed">
           Цифры — на публичной когорте Stanford, где доступен только пульс покоя (Fitbit).
-          На твоём Whoop есть ещё частота дыхания, HRV и темп. кожи (сильнейшие предикторы
-          инфекции), поэтому детекция ожидается выше, чем на одном канале.
+          На Whoop каналов пять (HRV, частота дыхания, темп. кожи, сон), но правило их
+          слияния на одноканальной когорте проверить нельзя, поэтому мы не заявляем, что
+          детекция там будет выше. Многоканальный режим пока не валидирован.
         </p>
       ) : (
         <p className="muted text-xs">
