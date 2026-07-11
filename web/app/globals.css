@@ -1,23 +1,37 @@
 @import "tailwindcss";
 
+/* Patient Zero — dark, premium dashboard theme.
+   The product is a single dark surface; we don't follow the OS light mode. */
 :root {
-  --bg: #f5f6f8;
-  --card: #ffffff;
-  --border: #e6e8ee;
-  --text: #14181d;
-  --muted: #6b7280;
-  --brand: #15a34a;
-  --green: #16a34a;
+  color-scheme: dark;
+
+  --bg: #08090b;
+  --panel: #0d0f13;      /* rail / subtle surfaces */
+  --card: #101318;       /* primary card fill */
+  --card-2: #0c0e12;     /* nested / inset fill */
+  --border: #20242c;     /* card hairline */
+  --border-soft: rgba(255, 255, 255, 0.06);
+  --track: rgba(255, 255, 255, 0.08);
+  --hover: rgba(255, 255, 255, 0.05);
+
+  --text: #eef1f5;
+  --muted: #8b93a1;
+  --faint: #5b626e;
+
+  --brand: #22c55e;
+  --green: #22c55e;
+  --blue: #4d8dff;
   --amber: #f59e0b;
-  --red: #ef4444;
-  /* signal palette (shared with charts via lib/signals.ts) */
+  --red: #ef4657;
+
+  /* signal palette (mirrors lib/signals.ts, used by charts) */
   --rhr: #ef4444;
   --resp: #f97316;
   --hrv: #3b82f6;
   --temp: #14b8a6;
   --sleep: #8b5cf6;
-  --hdi: #16a34a;
-  --prob: #7c3aed;
+  --hdi: #22c55e;
+  --prob: #8b5cf6;
 }
 
 * { box-sizing: border-box; }
@@ -25,25 +39,70 @@ html, body { padding: 0; margin: 0; }
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    Helvetica, Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+    "Segoe UI", Inter, Roboto, system-ui, "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
+/* Primary card: faint hairline + a barely-there top highlight for depth. */
 .card {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+  border-radius: 18px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.02) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
 }
+/* Nested / inset card, sits inside a .card or directly on the bg. */
+.card-2 {
+  background: var(--card-2);
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+}
+
 .muted { color: var(--muted); }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0d1013;
-    --card: #14181d;
-    --border: #232a31;
-    --text: #eef1f4;
-    --muted: #9aa4b2;
-  }
+.section-label {
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 500;
 }
+
+/* Range input — green fill, round thumb (used by Replay scrubber). */
+input[type="range"].pz-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--track);
+  outline: none;
+}
+input[type="range"].pz-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--brand);
+  border: 2px solid #0b1f14;
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.35);
+  cursor: pointer;
+}
+input[type="range"].pz-range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--brand);
+  border: 2px solid #0b1f14;
+  cursor: pointer;
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb {
+  background: #1c2027;
+  border-radius: 999px;
+  border: 2px solid var(--bg);
+}
+::-webkit-scrollbar-track { background: transparent; }

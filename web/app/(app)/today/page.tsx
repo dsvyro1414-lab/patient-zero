@@ -15,51 +15,56 @@ export default async function TodayPage() {
   const status = bandFor(rec);
   const prob = rec.infection_probability ?? 0;
   const hdi = rec.health_deviation_index;
+  const bandLabel =
+    status.band === "red" ? "RED" : status.band === "amber" ? "AMBER" : "GREEN";
 
   return (
-    <div className="space-y-4">
-      <PageHeader n={2} title="TODAY / STATUS" />
-      <div className="grid lg:grid-cols-2 gap-4">
+    <div className="space-y-5">
+      <div className="section-label">Today / Status</div>
+
+      <div className="grid lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)] gap-4">
         {/* left column */}
         <div className="space-y-4">
-          <div className="card p-6">
-            <div className="text-xs muted tracking-wide mb-2">STATUS</div>
+          <div className="card p-6 sm:p-7">
+            <div className="section-label mb-3">Status</div>
             <div className="flex items-start justify-between">
               <div>
-                <div className="text-3xl font-bold" style={{ color: status.color }}>
-                  {status.title === "ILLNESS WATCH" ? "RED" : status.band === "amber" ? "AMBER" : "GREEN"}
+                <div className="text-4xl font-bold tracking-tight" style={{ color: status.color }}>
+                  {bandLabel}
                 </div>
-                <div className="font-medium mt-0.5">{cap(status.title)}</div>
-                <div className="muted text-sm">{status.subtitle}</div>
+                <div className="text-lg font-semibold mt-1">{cap(status.title)}</div>
+                <div className="muted text-sm mt-0.5">{status.subtitle}</div>
               </div>
               <ShieldBadge color={status.color} />
             </div>
 
-            <div className="grid grid-cols-2 gap-4 mt-6 pt-5 border-t border-[color:var(--border)]">
+            <div className="grid grid-cols-2 gap-6 mt-7 pt-6 border-t border-[color:var(--border)]">
               <div>
-                <div className="muted text-xs mb-2">Infection Probability</div>
+                <div className="muted text-xs mb-3">Infection Probability</div>
                 <Gauge value={prob} color={status.color} />
               </div>
               <div>
                 <div className="muted text-xs mb-2">Health Deviation Index</div>
-                <div className="text-3xl font-bold">{hdi.toFixed(2)}</div>
+                <div className="text-4xl font-bold tracking-tight">{hdi.toFixed(2)}</div>
                 <HdiMeter value={hdi} />
               </div>
             </div>
           </div>
 
-          <div className="card p-5">
-            <h3 className="font-semibold mb-2">Что это значит</h3>
-            <p className="text-sm leading-relaxed">{explain(rec, status.band)}</p>
-            <p className="muted text-xs mt-3">
-              Сгенерировано AI • Не является медицинской рекомендацией
+          <div className="card p-6">
+            <h3 className="font-semibold mb-2.5">Что это значит</h3>
+            <p className="text-sm leading-relaxed text-[color:var(--text)]/90">
+              {explain(rec, status.band)}
+            </p>
+            <p className="muted text-xs mt-4">
+              Сгенерировано AI · Не является медицинской рекомендацией
             </p>
           </div>
         </div>
 
         {/* right column */}
         <div className="space-y-4">
-          <div className="card p-5">
+          <div className="card p-6">
             <h3 className="font-semibold mb-4">Почему (топ-сигналы)</h3>
             <WhyBars signals={rec.signals} />
           </div>
@@ -94,11 +99,11 @@ function HdiMeter({ value }: { value: number }) {
   const label = value >= 2.5 ? "High" : value >= 1 ? "Moderate" : "Low";
   const color = value >= 2.5 ? "var(--red)" : value >= 1 ? "var(--amber)" : "var(--green)";
   return (
-    <div className="mt-2">
-      <div className="h-1.5 rounded-full bg-black/[0.06] overflow-hidden">
+    <div className="mt-3">
+      <div className="h-1.5 rounded-full bg-[color:var(--track)] overflow-hidden">
         <div className="h-full rounded-full" style={{ width: `${pct * 100}%`, background: color }} />
       </div>
-      <div className="flex justify-between text-[11px] muted mt-1">
+      <div className="flex justify-between text-[11px] muted mt-1.5">
         <span>0</span>
         <span style={{ color }}>{label}</span>
         <span>5+</span>
@@ -109,19 +114,14 @@ function HdiMeter({ value }: { value: number }) {
 
 function ShieldBadge({ color }: { color: string }) {
   return (
-    <div className="grid place-items-center w-11 h-11 rounded-full" style={{ background: `${color}1a` }}>
+    <div
+      className="grid place-items-center w-11 h-11 rounded-xl"
+      style={{ background: `${color}22`, border: `1px solid ${color}40` }}
+    >
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-        <path d="M12 2 4 5v6c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10V5l-8-3Z" fill={color} opacity="0.9" />
+        <path d="M12 2 4 5v6c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10V5l-8-3Z" fill={color} />
         <path d="m9 12 2 2 4-4" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
-    </div>
-  );
-}
-
-function PageHeader({ n, title }: { n: number; title: string }) {
-  return (
-    <div className="text-xs muted tracking-wider">
-      {n}. {title}
     </div>
   );
 }

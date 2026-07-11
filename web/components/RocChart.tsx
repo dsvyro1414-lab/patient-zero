@@ -26,12 +26,12 @@ export function RocChart({ fpr, tpr, auc }: { fpr: number[]; tpr: number[]; auc:
             labelFormatter={(l: number) => `FPR ${Number(l).toFixed(2)}`}
           />
           <Line dataKey="diag" stroke="var(--muted)" strokeDasharray="5 5" dot={false} strokeWidth={1.2} isAnimationActive={false} />
-          <Line dataKey="tpr" stroke="#16a34a" dot={false} strokeWidth={2.4} isAnimationActive={false} />
+          <Line dataKey="tpr" stroke="#22c55e" dot={false} strokeWidth={2.6} isAnimationActive={false} />
         </LineChart>
       </ResponsiveContainer>
       <div className="absolute right-10 bottom-16 text-right pointer-events-none">
         <div className="muted text-sm">AUC</div>
-        <div className="text-4xl font-bold" style={{ color: "#16a34a" }}>{auc.toFixed(2)}</div>
+        <div className="text-4xl font-bold" style={{ color: "var(--green)" }}>{auc.toFixed(2)}</div>
       </div>
     </div>
   );

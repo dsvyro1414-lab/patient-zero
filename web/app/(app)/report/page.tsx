@@ -30,7 +30,7 @@ export default async function ReportPage() {
 
   return (
     <div className="space-y-4">
-      <div className="text-xs muted tracking-wider">4. REPORT CARD / METRICS</div>
+      <div className="section-label">Report Card / Metrics</div>
 
       {/* headline: changepoint detection performance */}
       <div className="grid sm:grid-cols-3 gap-4">
@@ -38,13 +38,13 @@ export default async function ReportPage() {
           label="Досимптомная чувствительность"
           value={sens == null ? "—" : `${Math.round(sens * 100)}%`}
           note={det ? `${det.episodes_presymptomatic}/${det.n_episodes} эпизодов пойманы ДО симптомов` : "случаев обнаружено"}
-          color="#16a34a"
+          color="var(--green)"
         />
         <Stat
           label="Медианное опережение"
           value={lead == null ? "—" : `${lead} дн.`}
           note="Среди досимптомных срабатываний"
-          color="#3b82f6"
+          color="var(--blue)"
         />
         <Stat
           label="Ложные тревоги"
@@ -78,7 +78,7 @@ export default async function ReportPage() {
             <p className="muted text-sm">Нет ROC-данных — запусти обучение.</p>
           )}
           <div className="flex gap-5 text-xs muted mt-2">
-            <span className="inline-flex items-center gap-1.5"><i className="w-4 border-t-2" style={{ borderColor: "#16a34a" }} /> Классификатор (AUC = {m.roc_auc.toFixed(2)})</span>
+            <span className="inline-flex items-center gap-1.5"><i className="w-4 border-t-2" style={{ borderColor: "var(--green)" }} /> Классификатор (AUC = {m.roc_auc.toFixed(2)})</span>
             <span className="inline-flex items-center gap-1.5"><i className="w-4 border-t-2 border-dashed" style={{ borderColor: "var(--muted)" }} /> Random (0.50)</span>
           </div>
         </div>
@@ -137,10 +137,10 @@ export default async function ReportPage() {
 
 function Stat({ label, value, note, color }: { label: string; value: string; note: string; color?: string }) {
   return (
-    <div className="card p-5">
+    <div className="card p-6">
       <div className="muted text-sm">{label}</div>
-      <div className="text-4xl font-bold mt-1" style={{ color: color ?? "var(--text)" }}>{value}</div>
-      {note && <div className="muted text-xs mt-1">{note}</div>}
+      <div className="text-[2.6rem] leading-none font-bold mt-2.5 tracking-tight" style={{ color: color ?? "var(--text)" }}>{value}</div>
+      {note && <div className="muted text-xs mt-3">{note}</div>}
     </div>
   );
 }
@@ -156,10 +156,10 @@ function Row({ k, v }: { k: string; v: string }) {
 
 function ShieldCheck() {
   return (
-    <div className="grid place-items-center w-10 h-10 rounded-full" style={{ background: "#16a34a1a" }}>
+    <div className="grid place-items-center w-10 h-10 rounded-full" style={{ background: "rgba(34,197,94,0.14)" }}>
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-        <path d="M12 2 4 5v6c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10V5l-8-3Z" fill="#16a34a" />
-        <path d="m9 12 2 2 4-4" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M12 2 4 5v6c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10V5l-8-3Z" fill="var(--green)" />
+        <path d="m9 12 2 2 4-4" stroke="#08090b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     </div>
   );

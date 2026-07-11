@@ -1,51 +1,71 @@
+import fs from "node:fs";
+import path from "node:path";
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
+import { WhoopBand } from "@/components/WhoopBand";
+
+// Use a real product photo the moment one is dropped into web/public,
+// otherwise fall back to the self-contained SVG band.
+function findBandPhoto(): string | null {
+  const dir = path.join(process.cwd(), "public");
+  for (const name of ["whoop-band.png", "whoop-band.webp", "whoop-band.jpg", "whoop-band.jpeg"]) {
+    try {
+      if (fs.existsSync(path.join(dir, name))) return "/" + name;
+    } catch {}
+  }
+  return null;
+}
 
 export default function ConnectPage() {
+  const bandPhoto = findBandPhoto();
   return (
-    <main className="min-h-screen flex items-center justify-center p-4 sm:p-8">
-      <div className="card w-full max-w-5xl grid md:grid-cols-2 overflow-hidden">
-        {/* left — hero */}
-        <div className="p-8 sm:p-12 flex flex-col">
-          <div className="flex items-center gap-2 mb-10">
-            <Logo />
-            <span className="font-semibold text-lg tracking-tight">Patient Zero</span>
-          </div>
+    <main className="min-h-screen grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
+      {/* left — hero */}
+      <section className="relative flex flex-col px-7 py-10 sm:px-14 sm:py-14">
+        <div className="flex items-center gap-2.5">
+          <Logo size={22} />
+          <span className="text-[13px] font-semibold tracking-[0.22em] text-[color:var(--muted)] uppercase">
+            Patient Zero
+          </span>
+        </div>
 
-          <h1 className="text-4xl sm:text-[2.75rem] leading-[1.08] font-bold tracking-tight">
-            Твой Whoop знает, что ты заболеваешь,{" "}
-            <span style={{ color: "var(--brand)" }}>раньше тебя.</span>
+        <div className="my-auto max-w-[30rem] py-10">
+          <h1 className="text-[2.6rem] sm:text-[3.25rem] font-bold leading-[1.05] tracking-[-0.02em]">
+            Твой организм<br className="hidden sm:block" /> даёт сигналы{" "}
+            <span className="text-[color:var(--brand)]">
+              раньше&nbsp;симптомов.
+            </span>
           </h1>
 
-          <p className="muted mt-5 text-[15px] leading-relaxed max-w-sm">
-            Мы анализируем сигналы твоего организма, чтобы предупредить инфекцию за
-            дни до первых симптомов.
+          <p className="mt-6 text-[15px] leading-relaxed text-[color:var(--muted)] max-w-[24rem]">
+            Мы анализируем твои сигналы, чтобы предупредить инфекцию за дни до
+            первых признаков.
           </p>
 
           <Link
             href="/today"
-            className="mt-8 inline-flex items-center gap-3 self-start rounded-xl bg-[#111418] text-white px-6 py-3.5 font-medium hover:bg-black transition-colors"
+            className="mt-9 inline-flex items-center gap-3 rounded-2xl bg-white pl-2 pr-6 py-2 font-semibold text-[#0b0d10] hover:bg-white/90 transition-colors"
           >
-            <span className="grid place-items-center w-6 h-6 rounded-full bg-white text-[#111418] text-xs font-bold">
+            <span className="grid place-items-center w-9 h-9 rounded-full bg-[#0b0d10] text-white text-[13px] font-bold">
               W
             </span>
-            Connect Whoop
+            Connect WHOOP
           </Link>
 
-          <div className="muted mt-3 flex items-center gap-1.5 text-sm">
+          <div className="mt-4 flex items-center gap-2 text-sm text-[color:var(--muted)]">
             <LockIcon /> OAuth — безопасное подключение
           </div>
-
-          <p className="muted mt-auto pt-10 text-xs">
-            Не медицинский прибор и не заменяет консультацию врача.
-          </p>
         </div>
 
-        {/* right — device panel */}
-        <div className="relative hidden md:block bg-[radial-gradient(120%_100%_at_70%_0%,#eef1f5_0%,#e4e8ee_55%,#dfe3ea_100%)]">
-          <BandArt />
-        </div>
-      </div>
+        <p className="text-xs text-[color:var(--faint)]">
+          Не медицинский прибор и не заменяет консультацию врача.
+        </p>
+      </section>
+
+      {/* right — device */}
+      <section className="relative hidden md:block overflow-hidden border-l border-[color:var(--border)]">
+        <WhoopBand src={bandPhoto} />
+      </section>
     </main>
   );
 }
@@ -53,22 +73,8 @@ export default function ConnectPage() {
 function LockIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <rect x="4" y="10" width="16" height="10" rx="2" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M8 10V7a4 4 0 1 1 8 0v3" stroke="currentColor" strokeWidth="1.8" />
+      <rect x="4" y="10" width="16" height="10" rx="2.5" stroke="currentColor" strokeWidth="1.7" />
+      <path d="M8 10V7a4 4 0 1 1 8 0v3" stroke="currentColor" strokeWidth="1.7" />
     </svg>
-  );
-}
-
-function BandArt() {
-  return (
-    <div className="absolute inset-0 grid place-items-center">
-      <div className="relative w-56 h-56">
-        <div className="absolute inset-0 rounded-full border-[26px] border-[#1b1e24] shadow-2xl" />
-        <div className="absolute inset-[26px] rounded-full border border-[#2b2f36]" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 grid place-items-center w-12 h-8 rounded bg-[#0f1114] text-white/70 text-[10px] tracking-widest">
-          WHOOP
-        </div>
-      </div>
-    </div>
   );
 }

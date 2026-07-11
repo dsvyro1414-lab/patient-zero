@@ -19,7 +19,7 @@ export function WhyBars({ signals }: { signals: Record<string, number> }) {
               {fmtZ(z)}
             </span>
           </div>
-          <div className="h-1.5 rounded-full bg-black/[0.06] overflow-hidden">
+          <div className="h-2 rounded-full bg-[color:var(--track)] overflow-hidden">
             <div
               className="h-full rounded-full"
               style={{ width: `${(Math.abs(z) / maxAbs) * 100}%`, background: meta.color }}

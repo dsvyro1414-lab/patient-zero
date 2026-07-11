@@ -60,9 +60,9 @@ export default function ReplayPage() {
 
   return (
     <div className="space-y-4">
-      <div className="text-xs muted tracking-wider">3. REPLAY TIMELINE</div>
+      <div className="section-label">Replay Timeline</div>
 
-      <div className="card p-5">
+      <div className="card p-6">
         <Legend />
 
         {/* signals in shared σ-space */}
@@ -120,17 +120,25 @@ export default function ReplayPage() {
   );
 }
 
+const LEGEND_SHORT: Record<string, string> = {
+  RHR: "RHR",
+  "Respiratory Rate": "Respiratory Rate",
+  HRV: "HRV",
+  "Skin Temperature": "Skin Temp.",
+  "Sleep Performance": "Sleep Perf.",
+};
+
 function Legend() {
   const items = [
-    ...SIGNALS.map((s) => ({ label: s.label, color: s.color, dash: false })),
+    ...SIGNALS.map((s) => ({ label: LEGEND_SHORT[s.label] ?? s.label, color: s.color, dash: false })),
     { label: "Baseline", color: "var(--muted)", dash: true },
-    { label: "Health Deviation Index", color: COLOR.hdi, dash: false },
-    { label: "Infection Probability", color: COLOR.prob, dash: false },
+    { label: "Health Dev.", color: COLOR.hdi, dash: false },
+    { label: "Infection Prob.", color: COLOR.prob, dash: false },
   ];
   return (
-    <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs muted">
+    <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs muted mb-1">
       {items.map((i) => (
-        <span key={i.label} className="inline-flex items-center gap-1.5">
+        <span key={i.label} className="inline-flex items-center gap-2">
           <span className="w-4 h-0 border-t-2" style={{ borderColor: i.color, borderStyle: i.dash ? "dashed" : "solid" }} />
           {i.label}
         </span>
@@ -142,26 +150,33 @@ function Legend() {
 function Scrubber({
   min, max, sel, setSel, selRel, rec,
 }: { min: number; max: number; sel: number; setSel: (n: number) => void; selRel: number; rec: DayRecord }) {
+  const pct = max > min ? ((sel - min) / (max - min)) * 100 : 0;
   return (
-    <div className="card p-5">
-      <div className="flex items-center gap-4">
-        <div>
+    <div className="card p-6">
+      <div className="flex items-center gap-5">
+        <div className="shrink-0">
           <div className="muted text-xs">День</div>
-          <div className="text-2xl font-bold tabular-nums">{selRel >= 0 ? `+${selRel}` : selRel}</div>
+          <div className="text-3xl font-bold tabular-nums leading-tight">
+            {selRel >= 0 ? `+${selRel}` : selRel}
+          </div>
         </div>
         <input
           type="range" min={min} max={max} value={sel}
           onChange={(e) => setSel(Number(e.target.value))}
-          className="flex-1 accent-[color:var(--brand)]"
+          className="pz-range flex-1"
+          style={{
+            background: `linear-gradient(to right, var(--brand) 0 ${pct}%, var(--track) ${pct}% 100%)`,
+          }}
         />
         <button
           onClick={() => setSel(Math.min(max, sel + 1))}
-          className="grid place-items-center w-9 h-9 rounded-lg border border-[color:var(--border)] hover:bg-black/[0.04]"
+          className="grid place-items-center w-10 h-10 rounded-xl border border-[color:var(--border)] text-[color:var(--muted)] hover:bg-[color:var(--hover)] hover:text-[color:var(--text)] transition-colors shrink-0"
           aria-label="next day"
         >→</button>
       </div>
-      <p className="muted text-xs mt-3">
-        {rec.alarm ? "🔴 Тревога активна в этот день" : `Health Deviation Index: ${rec.health_deviation_index.toFixed(2)}`}
+      <p className="muted text-xs mt-4 flex items-center gap-2">
+        {rec.alarm && <span className="inline-block w-2 h-2 rounded-full" style={{ background: "var(--red)" }} />}
+        {rec.alarm ? "Тревога активна в этот день" : `Health Deviation Index: ${rec.health_deviation_index.toFixed(2)}`}
         {rec.infection_probability != null && ` · вероятность ${Math.round(rec.infection_probability * 100)}%`}
       </p>
     </div>
@@ -176,14 +191,14 @@ function Contributions({ rec }: { rec: DayRecord }) {
   const total = rows.reduce((s, r) => s + r.c, 0) || 1;
 
   return (
-    <div className="card p-5">
+    <div className="card p-6">
       <h3 className="font-semibold mb-4">Вклады сигналов <span className="muted font-normal text-sm">(в этот день)</span></h3>
-      <div className="space-y-2.5">
+      <div className="space-y-3">
         {rows.sort((a, b) => b.c - a.c).map(({ k, z, meta, c }) => (
           <div key={k} className="flex items-center gap-3 text-sm">
             <span className="w-24 shrink-0">{meta!.short}</span>
             <span className="w-14 tabular-nums" style={{ color: meta!.color }}>{fmtZ(z)}</span>
-            <span className="flex-1 h-1.5 rounded-full bg-black/[0.06] overflow-hidden">
+            <span className="flex-1 h-2 rounded-full bg-[color:var(--track)] overflow-hidden">
               <span className="block h-full rounded-full" style={{ width: `${(c / total) * 100}%`, background: meta!.color }} />
             </span>
             <span className="w-9 text-right tabular-nums muted">{Math.round((c / total) * 100)}%</span>
