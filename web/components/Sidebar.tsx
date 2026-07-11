@@ -5,9 +5,11 @@ import { usePathname } from "next/navigation";
 import { Logo } from "./Logo";
 
 const NAV = [
-  { href: "/today", label: "Today", icon: HomeIcon },
-  { href: "/replay", label: "Replay", icon: ActivityIcon },
-  { href: "/report", label: "Report", icon: ReportIcon },
+  { href: "/home", label: "Главная", icon: HomeIcon },
+  { href: "/forecast", label: "Прогноз", icon: ForecastIcon },
+  { href: "/today", label: "Статус", icon: PulseIcon },
+  { href: "/replay", label: "Таймлайн", icon: ActivityIcon },
+  { href: "/report", label: "Метрики", icon: ReportIcon },
 ];
 
 export function Sidebar() {
@@ -61,6 +63,25 @@ function HomeIcon() {
     <svg width="20" height="20" viewBox="0 0 24 24" {...sw}>
       <path d="M4 11 12 4l8 7" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M6 9.8V19h12V9.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function ForecastIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" {...sw}>
+      <path d="M12 3l1.8 4.4L18 9l-4.2 1.6L12 15l-1.8-4.4L6 9l4.2-1.6L12 3Z"
+        strokeLinejoin="round" />
+      <path d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8Z"
+        strokeLinejoin="round" />
+    </svg>
+  );
+}
+function PulseIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" {...sw}>
+      <path d="M20.8 5.6a5 5 0 0 0-8.8-1.4A5 5 0 0 0 3.2 8c0 4.4 5.9 8.4 8.8 10 1.6-.9 4.2-2.6 6-4.8"
+        strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M8 12h2.5l1.5-3 2 5 1.3-2H21" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

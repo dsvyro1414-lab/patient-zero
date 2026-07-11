@@ -43,7 +43,7 @@ export default function ConnectPage() {
           </p>
 
           <Link
-            href="/today"
+            href="/home"
             className="mt-9 inline-flex items-center gap-3 rounded-2xl bg-white pl-2 pr-6 py-2 font-semibold text-[#0b0d10] hover:bg-white/90 transition-colors"
           >
             <span className="grid place-items-center w-9 h-9 rounded-full bg-[#0b0d10] text-white text-[13px] font-bold">
