@@ -3,27 +3,31 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Logo } from "./Logo";
+import { LangToggle } from "./LangToggle";
+import { useT } from "./LocaleProvider";
 
 const NAV = [
-  { href: "/home", label: "Главная", icon: HomeIcon },
-  { href: "/forecast", label: "Прогноз", icon: ForecastIcon },
-  { href: "/today", label: "Статус", icon: PulseIcon },
-  { href: "/replay", label: "Таймлайн", icon: ActivityIcon },
-  { href: "/report", label: "Метрики", icon: ReportIcon },
-];
+  { href: "/home", key: "home", icon: HomeIcon },
+  { href: "/forecast", key: "forecast", icon: ForecastIcon },
+  { href: "/today", key: "today", icon: PulseIcon },
+  { href: "/replay", key: "replay", icon: ActivityIcon },
+  { href: "/report", key: "report", icon: ReportIcon },
+] as const;
 
 export function Sidebar() {
   const path = usePathname();
+  const t = useT();
   return (
     <aside className="sticky top-0 z-10 h-screen w-[68px] shrink-0 flex flex-col items-center border-r border-[color:var(--border)] bg-[color:var(--panel)] py-5">
-      <Link href="/" aria-label="Patient Zero" title="Patient Zero"
+      <Link href="/" aria-label={t.nav.brand} title={t.nav.brand}
         className="grid place-items-center w-11 h-11 rounded-xl bg-[color:var(--brand)]/10 border border-[color:var(--brand)]/20">
         <Logo size={24} />
       </Link>
 
       <nav className="mt-7 flex flex-col gap-2">
-        {NAV.map(({ href, label, icon: Icon }) => {
+        {NAV.map(({ href, key, icon: Icon }) => {
           const active = path === href;
+          const label = t.nav[key];
           return (
             <Link
               key={href}
@@ -33,7 +37,7 @@ export function Sidebar() {
               aria-current={active ? "page" : undefined}
               className={`grid place-items-center w-11 h-11 rounded-xl transition-colors ${
                 active
-                  ? "bg-[color:var(--brand)]/12 text-[color:var(--brand)]"
+                  ? "text-[color:var(--brand)]"
                   : "text-[color:var(--muted)] hover:bg-[color:var(--hover)] hover:text-[color:var(--text)]"
               }`}
               style={active ? { background: "rgba(34,197,94,0.13)" } : undefined}
@@ -44,14 +48,17 @@ export function Sidebar() {
         })}
       </nav>
 
-      <Link
-        href="/"
-        aria-label="Logout"
-        title="Logout"
-        className="mt-auto grid place-items-center w-11 h-11 rounded-xl text-[color:var(--muted)] hover:bg-[color:var(--hover)] hover:text-[color:var(--text)] transition-colors"
-      >
-        <LogoutIcon />
-      </Link>
+      <div className="mt-auto flex flex-col items-center gap-4">
+        <LangToggle />
+        <Link
+          href="/"
+          aria-label={t.nav.logout}
+          title={t.nav.logout}
+          className="grid place-items-center w-11 h-11 rounded-xl text-[color:var(--muted)] hover:bg-[color:var(--hover)] hover:text-[color:var(--text)] transition-colors"
+        >
+          <LogoutIcon />
+        </Link>
+      </div>
     </aside>
   );
 }

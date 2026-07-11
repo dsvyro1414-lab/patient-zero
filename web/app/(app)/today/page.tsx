@@ -1,102 +1,97 @@
 import { getDemo } from "@/lib/api";
+import { getT } from "@/lib/locale-server";
 import { bandFor, pickToday } from "@/lib/status";
 import { Gauge } from "@/components/Gauge";
 import { WhyBars } from "@/components/WhyBars";
 import { ActionCard } from "@/components/ActionCard";
 import { SIGNAL_BY_KEY } from "@/lib/signals";
+import { fmt, type Dict } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
 export default async function TodayPage() {
-  const demo = await getDemo();
-  if (!demo || demo.records.length === 0) return <ServiceDown />;
+  const [demo, t] = await Promise.all([getDemo(), getT()]);
+  if (!demo || demo.records.length === 0)
+    return <ServiceDown title={t.common.serviceDown} hint={t.common.serviceDownHint} />;
 
   const rec = pickToday(demo);
   const status = bandFor(rec);
+  const band = status.band;
   const prob = rec.infection_probability ?? 0;
   const hdi = rec.health_deviation_index;
-  const bandLabel =
-    status.band === "red" ? "RED" : status.band === "amber" ? "AMBER" : "GREEN";
+  const bandLabel = band === "red" ? "RED" : band === "amber" ? "AMBER" : "GREEN";
+  const tt = t.today;
+
+  const top = Object.entries(rec.signals)
+    .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+    .slice(0, 2)
+    .map(([k]) => SIGNAL_BY_KEY[k]?.label)
+    .filter(Boolean)
+    .join(` ${t.common.and} `);
 
   return (
     <div className="space-y-5">
-      <div className="section-label">Today / Status</div>
+      <div className="section-label">{tt.label}</div>
 
       <div className="grid lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)] gap-4">
-        {/* left column */}
         <div className="space-y-4">
           <div className="card p-6 sm:p-7">
-            <div className="section-label mb-3">Status</div>
+            <div className="section-label mb-3">{tt.status}</div>
             <div className="flex items-start justify-between">
               <div>
                 <div className="text-4xl font-bold tracking-tight" style={{ color: status.color }}>
                   {bandLabel}
                 </div>
-                <div className="text-lg font-semibold mt-1">{cap(status.title)}</div>
-                <div className="muted text-sm mt-0.5">{status.subtitle}</div>
+                <div className="text-lg font-semibold mt-1">{tt.title[band]}</div>
+                <div className="muted text-sm mt-0.5">{tt.subtitle[band]}</div>
               </div>
               <ShieldBadge color={status.color} />
             </div>
 
             <div className="grid grid-cols-2 gap-6 mt-7 pt-6 border-t border-[color:var(--border)]">
               <div>
-                <div className="muted text-xs mb-3">Infection Probability</div>
+                <div className="muted text-xs mb-3">{tt.infectionProb}</div>
                 <Gauge value={prob} color={status.color} />
               </div>
               <div>
-                <div className="muted text-xs mb-2">Health Deviation Index</div>
+                <div className="muted text-xs mb-2">{tt.hdi}</div>
                 <div className="text-4xl font-bold tracking-tight">{hdi.toFixed(2)}</div>
-                <HdiMeter value={hdi} />
+                <HdiMeter value={hdi} labels={tt.meter} />
               </div>
             </div>
           </div>
 
           <div className="card p-6">
-            <h3 className="font-semibold mb-2.5">Что это значит</h3>
+            <h3 className="font-semibold mb-2.5">{tt.meaningTitle}</h3>
             <p className="text-sm leading-relaxed text-[color:var(--text)]/90">
-              {explain(rec, status.band)}
+              {fmt(tt.explain[band], { top })}
             </p>
-            <p className="muted text-xs mt-4">
-              Сгенерировано AI · Не является медицинской рекомендацией
-            </p>
+            <p className="muted text-xs mt-4">{tt.aiNote}</p>
           </div>
         </div>
 
-        {/* right column */}
         <div className="space-y-4">
           <div className="card p-6">
-            <h3 className="font-semibold mb-4">Почему (топ-сигналы)</h3>
-            <WhyBars signals={rec.signals} />
+            <h3 className="font-semibold mb-4">{tt.whyTitle}</h3>
+            <WhyBars signals={rec.signals} note={tt.sigmaNote} />
           </div>
-          <ActionCard band={status.band} />
+          <ActionCard band={band} t={t.actions} />
         </div>
       </div>
 
-      <SourceNote source={demo.source} modelLoaded={demo.model_loaded} />
+      <p className="muted text-xs">
+        {fmt(tt.source, {
+          source: demo.source === "synthetic" ? tt.synthetic : demo.source,
+          model: demo.model_loaded ? tt.sourceModelOn : tt.sourceModelOff,
+        })}
+      </p>
     </div>
   );
 }
 
-function explain(
-  rec: { signals: Record<string, number> },
-  band: "green" | "amber" | "red",
-): string {
-  const top = Object.entries(rec.signals)
-    .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
-    .slice(0, 2)
-    .map(([k]) => SIGNAL_BY_KEY[k]?.label)
-    .filter(Boolean)
-    .join(" и ");
-  if (band === "red")
-    return `Несколько сигналов (${top}) устойчиво отклонились от твоей нормы — картина, которая в исследованиях предшествовала инфекции. Отдых и изоляция сейчас снижают риск.`;
-  if (band === "amber")
-    return `Твои показатели немного отклонились от нормы (${top}). Есть ранние признаки нагрузки на организм. Отдых и восстановление помогут держать риск под контролем.`;
-  return "Показатели держатся в пределах твоего личного baseline. Явных признаков надвигающейся инфекции нет.";
-}
-
-function HdiMeter({ value }: { value: number }) {
+function HdiMeter({ value, labels }: { value: number; labels: Dict["today"]["meter"] }) {
   const pct = Math.min(1, value / 5);
-  const label = value >= 2.5 ? "High" : value >= 1 ? "Moderate" : "Low";
+  const label = value >= 2.5 ? labels.high : value >= 1 ? labels.moderate : labels.low;
   const color = value >= 2.5 ? "var(--red)" : value >= 1 ? "var(--amber)" : "var(--green)";
   return (
     <div className="mt-3">
@@ -126,25 +121,11 @@ function ShieldBadge({ color }: { color: string }) {
   );
 }
 
-function SourceNote({ source, modelLoaded }: { source: string; modelLoaded: boolean }) {
-  return (
-    <p className="muted text-xs">
-      Данные: {source === "synthetic" ? "синтетические (демо)" : source} · модель{" "}
-      {modelLoaded ? "загружена" : "не загружена"}
-    </p>
-  );
-}
-
-function ServiceDown() {
+function ServiceDown({ title, hint }: { title: string; hint: string }) {
   return (
     <div className="card p-8 max-w-lg">
-      <h2 className="font-semibold text-lg mb-2">ML-сервис недоступен</h2>
-      <p className="muted text-sm">
-        Запусти Python-сервис: <code>cd ml-service/src && uvicorn app:app --port 8000</code>,
-        затем обнови страницу.
-      </p>
+      <h2 className="font-semibold text-lg mb-2">{title}</h2>
+      <p className="muted text-sm">{hint}</p>
     </div>
   );
 }
-
-const cap = (s: string) => s.charAt(0) + s.slice(1).toLowerCase();

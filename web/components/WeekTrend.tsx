@@ -4,9 +4,12 @@ import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, ReferenceLine,
 } from "recharts";
 import type { WeekPoint } from "@/lib/forecast";
+import { fmt } from "@/lib/i18n";
+import { useT } from "./LocaleProvider";
 
 // A deliberately plain "risk over the last 2 weeks" area — no σ, no numeric axis.
 export function WeekTrend({ series }: { series: WeekPoint[] }) {
+  const t = useT().risk;
   return (
     <div className="h-[200px] mt-1">
       <ResponsiveContainer width="100%" height="100%">
@@ -24,12 +27,12 @@ export function WeekTrend({ series }: { series: WeekPoint[] }) {
             tickLine={false}
             axisLine={false}
             tick={{ fontSize: 11, fill: "var(--muted)" }}
-            tickFormatter={(v: number) => (v === 0 ? "сегодня" : `${-v} дн`)}
+            tickFormatter={(v: number) => (v === 0 ? t.chartToday : fmt(t.chartDays, { n: -v }))}
             ticks={[series[0]?.rel ?? -13, -7, 0]}
           />
           <ReferenceLine y={65} stroke="var(--red)" strokeDasharray="4 4" strokeOpacity={0.5}
-            label={{ value: "высокий", fill: "var(--muted)", fontSize: 10, position: "insideTopLeft" }} />
-          <Tooltip content={<TrendTip />} />
+            label={{ value: t.chartHigh, fill: "var(--muted)", fontSize: 10, position: "insideTopLeft" }} />
+          <Tooltip content={<TrendTip t={t} />} />
           <Area
             type="monotone" dataKey="pct" stroke="#f5a524" strokeWidth={2.4}
             fill="url(#risk)" isAnimationActive={false}
@@ -40,14 +43,14 @@ export function WeekTrend({ series }: { series: WeekPoint[] }) {
   );
 }
 
-function TrendTip({ active, payload }: any) {
+function TrendTip({ active, payload, t }: any) {
   if (!active || !payload?.length) return null;
   const rel = payload[0].payload.rel as number;
   const pct = Math.round(payload[0].value as number);
   return (
     <div className="card p-2.5 text-xs">
-      <div className="muted mb-0.5">{rel === 0 ? "сегодня" : `${-rel} дн. назад`}</div>
-      <div className="font-medium">Уровень риска {pct}%</div>
+      <div className="muted mb-0.5">{rel === 0 ? t.tipToday : fmt(t.tipDaysAgo, { n: -rel })}</div>
+      <div className="font-medium">{fmt(t.tipLevel, { n: pct })}</div>
     </div>
   );
 }

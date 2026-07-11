@@ -7,8 +7,20 @@ import {
 } from "recharts";
 import type { DemoResult, DayRecord } from "@/lib/api";
 import { SIGNALS, SIGNAL_BY_KEY, COLOR, fmtZ } from "@/lib/signals";
+import { fmt, type Dict } from "@/lib/i18n";
+import { useT } from "@/components/LocaleProvider";
+
+const LEG_KEY: Record<string, keyof Dict["replay"]["legend"]> = {
+  resting_heart_rate: "rhr",
+  respiratory_rate: "resp",
+  hrv_rmssd_milli: "hrv",
+  skin_temp_celsius: "temp",
+  sleep_performance: "sleep",
+};
 
 export default function ReplayPage() {
+  const t = useT();
+  const tr = t.replay;
   const [demo, setDemo] = useState<DemoResult | null>(null);
   const [err, setErr] = useState(false);
   const [sel, setSel] = useState<number | null>(null);
@@ -51,8 +63,8 @@ export default function ReplayPage() {
     };
   }, [demo]);
 
-  if (err) return <Down />;
-  if (!demo || !prepared || sel == null) return <div className="p-6 muted">Загрузка…</div>;
+  if (err) return <Down text={tr.down} />;
+  if (!demo || !prepared || sel == null) return <div className="p-6 muted">{t.common.loading}</div>;
 
   const clSel = Math.min(prepared.dayMax, Math.max(prepared.dayMin, sel));
   const selRel = clSel - prepared.onset;
@@ -60,10 +72,10 @@ export default function ReplayPage() {
 
   return (
     <div className="space-y-4">
-      <div className="section-label">Replay Timeline</div>
+      <div className="section-label">{tr.label}</div>
 
       <div className="card p-6">
-        <Legend />
+        <Legend tr={tr} />
 
         {/* signals in shared σ-space */}
         <div className="h-[240px] mt-2">
@@ -74,14 +86,14 @@ export default function ReplayPage() {
               <XAxis dataKey="rel" tick={{ fontSize: 11, fill: "var(--muted)" }} tickLine={false} />
               <YAxis domain={[-3, 4]} tick={{ fontSize: 11, fill: "var(--muted)" }} tickLine={false}
                 axisLine={false} label={{ value: "σ", position: "insideTopLeft", fontSize: 11, fill: "var(--muted)" }} />
-              <Tooltip content={<SigTip />} />
+              <Tooltip content={<SigTip tr={tr} />} />
               <ReferenceLine y={0} stroke="var(--muted)" strokeDasharray="4 4" />
               {prepared.alarmRel != null && (
                 <ReferenceLine x={prepared.alarmRel} stroke={COLOR.amber} strokeWidth={1.5}
-                  label={{ value: "ALARM", fill: COLOR.amber, fontSize: 10, position: "top" }} />
+                  label={{ value: tr.alarm, fill: COLOR.amber, fontSize: 10, position: "top" }} />
               )}
               <ReferenceLine x={0} stroke={COLOR.red} strokeDasharray="5 4"
-                label={{ value: "ONSET", fill: COLOR.red, fontSize: 10, position: "top" }} />
+                label={{ value: tr.onset, fill: COLOR.red, fontSize: 10, position: "top" }} />
               <ReferenceLine x={selRel} stroke="var(--text)" strokeOpacity={0.35} />
               {SIGNALS.map((s) => (
                 <Line key={s.key} type="monotone" dataKey={s.key} stroke={s.color}
@@ -97,11 +109,11 @@ export default function ReplayPage() {
             <LineChart data={prepared.rows} margin={{ top: 6, right: 12, left: -18, bottom: 4 }}>
               <CartesianGrid stroke="var(--border)" vertical={false} />
               <XAxis dataKey="rel" tick={{ fontSize: 11, fill: "var(--muted)" }} tickLine={false}
-                label={{ value: "Days relative to onset", position: "insideBottom", offset: -2, fontSize: 11, fill: "var(--muted)" }} />
+                label={{ value: tr.daysAxis, position: "insideBottom", offset: -2, fontSize: 11, fill: "var(--muted)" }} />
               <YAxis yAxisId="l" tick={{ fontSize: 11, fill: "var(--muted)" }} tickLine={false} axisLine={false} />
               <YAxis yAxisId="r" orientation="right" domain={[0, 100]} unit="%"
                 tick={{ fontSize: 11, fill: "var(--muted)" }} tickLine={false} axisLine={false} />
-              <Tooltip content={<HdiTip />} />
+              <Tooltip content={<HdiTip tr={tr} />} />
               {prepared.alarmRel != null && <ReferenceLine yAxisId="l" x={prepared.alarmRel} stroke={COLOR.amber} strokeWidth={1.5} />}
               <ReferenceLine yAxisId="l" x={0} stroke={COLOR.red} strokeDasharray="5 4" />
               <ReferenceLine yAxisId="l" x={selRel} stroke="var(--text)" strokeOpacity={0.35} />
@@ -113,27 +125,19 @@ export default function ReplayPage() {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4">
-        <Scrubber min={prepared.dayMin} max={prepared.dayMax} sel={clSel} setSel={setSel} selRel={selRel} rec={selRec} />
-        <Contributions rec={selRec} />
+        <Scrubber min={prepared.dayMin} max={prepared.dayMax} sel={clSel} setSel={setSel} selRel={selRel} rec={selRec} tr={tr} />
+        <Contributions rec={selRec} tr={tr} />
       </div>
     </div>
   );
 }
 
-const LEGEND_SHORT: Record<string, string> = {
-  RHR: "RHR",
-  "Respiratory Rate": "Respiratory Rate",
-  HRV: "HRV",
-  "Skin Temperature": "Skin Temp.",
-  "Sleep Performance": "Sleep Perf.",
-};
-
-function Legend() {
+function Legend({ tr }: { tr: Dict["replay"] }) {
   const items = [
-    ...SIGNALS.map((s) => ({ label: LEGEND_SHORT[s.label] ?? s.label, color: s.color, dash: false })),
-    { label: "Baseline", color: "var(--muted)", dash: true },
-    { label: "Health Dev.", color: COLOR.hdi, dash: false },
-    { label: "Infection Prob.", color: COLOR.prob, dash: false },
+    ...SIGNALS.map((s) => ({ label: tr.legend[LEG_KEY[s.key]], color: s.color, dash: false })),
+    { label: tr.legend.baseline, color: "var(--muted)", dash: true },
+    { label: tr.legend.hdi, color: COLOR.hdi, dash: false },
+    { label: tr.legend.prob, color: COLOR.prob, dash: false },
   ];
   return (
     <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs muted mb-1">
@@ -148,14 +152,14 @@ function Legend() {
 }
 
 function Scrubber({
-  min, max, sel, setSel, selRel, rec,
-}: { min: number; max: number; sel: number; setSel: (n: number) => void; selRel: number; rec: DayRecord }) {
+  min, max, sel, setSel, selRel, rec, tr,
+}: { min: number; max: number; sel: number; setSel: (n: number) => void; selRel: number; rec: DayRecord; tr: Dict["replay"] }) {
   const pct = max > min ? ((sel - min) / (max - min)) * 100 : 0;
   return (
     <div className="card p-6">
       <div className="flex items-center gap-5">
         <div className="shrink-0">
-          <div className="muted text-xs">День</div>
+          <div className="muted text-xs">{tr.day}</div>
           <div className="text-3xl font-bold tabular-nums leading-tight">
             {selRel >= 0 ? `+${selRel}` : selRel}
           </div>
@@ -164,9 +168,7 @@ function Scrubber({
           type="range" min={min} max={max} value={sel}
           onChange={(e) => setSel(Number(e.target.value))}
           className="pz-range flex-1"
-          style={{
-            background: `linear-gradient(to right, var(--brand) 0 ${pct}%, var(--track) ${pct}% 100%)`,
-          }}
+          style={{ background: `linear-gradient(to right, var(--brand) 0 ${pct}%, var(--track) ${pct}% 100%)` }}
         />
         <button
           onClick={() => setSel(Math.min(max, sel + 1))}
@@ -176,14 +178,14 @@ function Scrubber({
       </div>
       <p className="muted text-xs mt-4 flex items-center gap-2">
         {rec.alarm && <span className="inline-block w-2 h-2 rounded-full" style={{ background: "var(--red)" }} />}
-        {rec.alarm ? "Тревога активна в этот день" : `Health Deviation Index: ${rec.health_deviation_index.toFixed(2)}`}
-        {rec.infection_probability != null && ` · вероятность ${Math.round(rec.infection_probability * 100)}%`}
+        {rec.alarm ? tr.alarmActive : fmt(tr.hdiLine, { v: rec.health_deviation_index.toFixed(2) })}
+        {rec.infection_probability != null && fmt(tr.prob, { p: Math.round(rec.infection_probability * 100) })}
       </p>
     </div>
   );
 }
 
-function Contributions({ rec }: { rec: DayRecord }) {
+function Contributions({ rec, tr }: { rec: DayRecord; tr: Dict["replay"] }) {
   const dir = (k: string, z: number) => (SIGNAL_BY_KEY[k]?.direction === "drop" ? -z : z);
   const rows = Object.entries(rec.signals)
     .map(([k, z]) => ({ k, z, meta: SIGNAL_BY_KEY[k], c: Math.max(0, dir(k, z)) }))
@@ -192,7 +194,7 @@ function Contributions({ rec }: { rec: DayRecord }) {
 
   return (
     <div className="card p-6">
-      <h3 className="font-semibold mb-4">Вклады сигналов <span className="muted font-normal text-sm">(в этот день)</span></h3>
+      <h3 className="font-semibold mb-4">{tr.contribTitle} <span className="muted font-normal text-sm">{tr.contribSub}</span></h3>
       <div className="space-y-3">
         {rows.sort((a, b) => b.c - a.c).map(({ k, z, meta, c }) => (
           <div key={k} className="flex items-center gap-3 text-sm">
@@ -209,11 +211,11 @@ function Contributions({ rec }: { rec: DayRecord }) {
   );
 }
 
-function SigTip({ active, payload, label }: any) {
+function SigTip({ active, payload, label, tr }: any) {
   if (!active || !payload?.length) return null;
   return (
     <div className="card p-2.5 text-xs">
-      <div className="muted mb-1">день {Number(label) >= 0 ? `+${label}` : label}</div>
+      <div className="muted mb-1">{fmt(tr.tipDay, { d: Number(label) >= 0 ? `+${label}` : label })}</div>
       {payload.filter((p: any) => p.value != null).map((p: any) => (
         <div key={p.dataKey} className="flex justify-between gap-3">
           <span style={{ color: p.color }}>{SIGNAL_BY_KEY[p.dataKey]?.short}</span>
@@ -224,14 +226,14 @@ function SigTip({ active, payload, label }: any) {
   );
 }
 
-function HdiTip({ active, payload, label }: any) {
+function HdiTip({ active, payload, label, tr }: any) {
   if (!active || !payload?.length) return null;
   return (
     <div className="card p-2.5 text-xs space-y-0.5">
-      <div className="muted">день {Number(label) >= 0 ? `+${label}` : label}</div>
+      <div className="muted">{fmt(tr.tipDay, { d: Number(label) >= 0 ? `+${label}` : label })}</div>
       {payload.map((p: any) => (
         <div key={p.dataKey} className="flex justify-between gap-3">
-          <span style={{ color: p.color }}>{p.dataKey === "hdi" ? "HDI" : "Probability"}</span>
+          <span style={{ color: p.color }}>{p.dataKey === "hdi" ? tr.legend.hdi : tr.legend.prob}</span>
           <span className="tabular-nums">{p.dataKey === "prob" ? `${Math.round(p.value)}%` : p.value?.toFixed?.(2)}</span>
         </div>
       ))}
@@ -239,11 +241,11 @@ function HdiTip({ active, payload, label }: any) {
   );
 }
 
-function Down() {
+function Down({ text }: { text: string }) {
   return (
     <div className="card p-8 max-w-lg">
-      <h2 className="font-semibold text-lg mb-2">ML-сервис недоступен</h2>
-      <p className="muted text-sm">Запусти <code>uvicorn app:app --port 8000</code> в ml-service/src.</p>
+      <h2 className="font-semibold text-lg mb-2">ML</h2>
+      <p className="muted text-sm">{text}</p>
     </div>
   );
 }

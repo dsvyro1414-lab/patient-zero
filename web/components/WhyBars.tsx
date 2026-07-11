@@ -1,7 +1,7 @@
 import { SIGNAL_BY_KEY, fmtZ } from "@/lib/signals";
 
 // A horizontal bar per contributing signal, width ∝ |z|, colored by signal.
-export function WhyBars({ signals }: { signals: Record<string, number> }) {
+export function WhyBars({ signals, note }: { signals: Record<string, number>; note: string }) {
   const rows = Object.entries(signals)
     .map(([key, z]) => ({ key, z, meta: SIGNAL_BY_KEY[key] }))
     .filter((r) => r.meta)
@@ -27,7 +27,7 @@ export function WhyBars({ signals }: { signals: Record<string, number> }) {
           </div>
         </div>
       ))}
-      <p className="muted text-xs pt-1">σ — стандартные отклонения от твоего baseline</p>
+      <p className="muted text-xs pt-1">{note}</p>
     </div>
   );
 }

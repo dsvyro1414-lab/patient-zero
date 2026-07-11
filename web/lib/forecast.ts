@@ -21,12 +21,6 @@ export function levelFromPct(pct: number): RiskLevel {
   return "low";
 }
 
-export const RISK_WORD: Record<RiskLevel, string> = {
-  high: "Высокий",
-  moderate: "Средний",
-  low: "Низкий",
-};
-
 export const RISK_COLOR: Record<RiskLevel, string> = {
   high: "var(--red)",
   moderate: "var(--amber)",
@@ -40,8 +34,10 @@ export const BAND_OF: Record<RiskLevel, "red" | "amber" | "green"> = {
   low: "green",
 };
 
+export type DayKey = "today" | "tomorrow" | "d2" | "d3";
+
 export interface DayView {
-  label: string;
+  key: DayKey;
   pct: number;
   level: RiskLevel;
 }
@@ -60,7 +56,7 @@ export interface Forecast {
   trend: "up" | "down" | "flat";
 }
 
-const LABELS = ["Завтра", "Послезавтра", "Через 2 дня"];
+const NEXT_KEYS: DayKey[] = ["tomorrow", "d2", "d3"];
 const avg = (xs: number[]) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : 0);
 
 export function buildForecast(demo: DemoResult): Forecast {
@@ -69,16 +65,16 @@ export function buildForecast(demo: DemoResult): Forecast {
   );
   const t = pickToday(demo).day_index;
 
-  const view = (idx: number, label: string): DayView | null => {
+  const view = (idx: number, key: DayKey): DayView | null => {
     const r = byDay[idx];
     if (!r) return null;
     const pct = riskPct(r.health_deviation_index);
-    return { label, pct, level: levelFromPct(pct) };
+    return { key, pct, level: levelFromPct(pct) };
   };
 
-  const today = view(t, "Сегодня")!;
+  const today = view(t, "today")!;
   const next = [t + 1, t + 2, t + 3]
-    .map((idx, i) => view(idx, LABELS[i]))
+    .map((idx, i) => view(idx, NEXT_KEYS[i]))
     .filter(Boolean) as DayView[];
 
   const series: WeekPoint[] = demo.records
@@ -96,9 +92,3 @@ export function buildForecast(demo: DemoResult): Forecast {
 
   return { today, tomorrow: next[0] ?? today, next, series, trend };
 }
-
-export const TREND_TEXT: Record<Forecast["trend"], string> = {
-  up: "Риск в последние дни растёт",
-  down: "Риск в последние дни снижается",
-  flat: "Риск держится примерно на одном уровне",
-};
