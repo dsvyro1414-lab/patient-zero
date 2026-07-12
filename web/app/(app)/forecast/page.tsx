@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getDemo } from "@/lib/api";
 import { getT } from "@/lib/locale-server";
 import { ActionCard } from "@/components/ActionCard";
@@ -64,6 +65,18 @@ export default async function ForecastPage() {
 
       {/* what to do */}
       <ActionCard band={BAND_OF[level]} t={t.actions} />
+
+      <Link
+        href="/next-steps"
+        className="inline-flex items-center gap-2 rounded-xl px-5 py-3 font-semibold border transition-colors hover:bg-[color:var(--hover)]"
+        style={
+          level === "low"
+            ? { borderColor: "var(--border)", color: "var(--muted)" }
+            : { borderColor: color, color }
+        }
+      >
+        {t.nextSteps.cta}
+      </Link>
     </div>
   );
 }

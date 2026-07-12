@@ -9,6 +9,7 @@ import { useT } from "./LocaleProvider";
 const NAV = [
   { href: "/home", key: "home", icon: HomeIcon },
   { href: "/forecast", key: "forecast", icon: ForecastIcon },
+  { href: "/next-steps", key: "nextSteps", icon: NextStepsIcon },
   { href: "/today", key: "today", icon: PulseIcon },
   { href: "/replay", key: "replay", icon: ActivityIcon },
   { href: "/report", key: "report", icon: ReportIcon },
@@ -80,6 +81,15 @@ function ForecastIcon() {
         strokeLinejoin="round" />
       <path d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8Z"
         strokeLinejoin="round" />
+    </svg>
+  );
+}
+function NextStepsIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" {...sw}>
+      <rect x="5" y="4" width="14" height="17" rx="2.5" />
+      <path d="M9 3.5h6v2.2H9z" strokeLinejoin="round" />
+      <path d="m8.5 12 2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

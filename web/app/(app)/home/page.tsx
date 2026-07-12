@@ -39,12 +39,25 @@ export default async function HomePage() {
           </div>
         </div>
 
-        <Link
-          href="/forecast"
-          className="mt-6 inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 font-semibold text-[#0b0d10] hover:bg-white/90 transition-colors"
-        >
-          {t.home.cta}
-        </Link>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link
+            href="/forecast"
+            className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 font-semibold text-[#0b0d10] hover:bg-white/90 transition-colors"
+          >
+            {t.home.cta}
+          </Link>
+          <Link
+            href="/next-steps"
+            className="inline-flex items-center gap-2 rounded-xl px-5 py-3 font-semibold border transition-colors hover:bg-[color:var(--hover)]"
+            style={
+              level === "low"
+                ? { borderColor: "var(--border)", color: "var(--muted)" }
+                : { borderColor: color, color }
+            }
+          >
+            {t.nextSteps.cta}
+          </Link>
+        </div>
       </div>
 
       {/* today / tomorrow */}

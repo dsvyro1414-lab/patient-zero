@@ -11,7 +11,7 @@ export function fmt(s: string, vars: Record<string, string | number>): string {
 }
 
 const ru = {
-  nav: { home: "Главная", forecast: "Прогноз", today: "Статус", replay: "Таймлайн", report: "Метрики", logout: "Выйти", brand: "Patient Zero" },
+  nav: { home: "Главная", forecast: "Прогноз", nextSteps: "Дальше", today: "Статус", replay: "Таймлайн", report: "Метрики", logout: "Выйти", brand: "Patient Zero" },
 
   connect: {
     h1white: "Твой организм даёт сигналы",
@@ -44,6 +44,141 @@ const ru = {
     trend: { up: "Риск в последние дни растёт", down: "Риск в последние дни снижается", flat: "Риск держится примерно на одном уровне" },
     weekTitle: "Уровень риска за 2 недели",
     weekSub: "Чем выше линия — тем сильнее организм отклонялся от твоей нормы.",
+  },
+
+  nextSteps: {
+    label: "Дальше",
+    title: "Что делать дальше",
+    sub: "Отметь, что чувствуешь. Мы подскажем, насколько это срочно и к какому специалисту стоит обратиться. Это информация для разговора с врачом, а не диагноз.",
+    cta: "Что делать дальше →",
+    wearableLine: "Сигнал носимого сейчас: {level}",
+    noWearable: "Сигнал носимого недоступен — оцениваем только по симптомам.",
+
+    result: {
+      whoTitle: "Куда обратиться",
+      whenTitle: "Когда",
+      whyTitle: "Почему такой совет",
+      safetyNet: "Если станет хуже или появится любой из тревожных признаков — обратись за помощью раньше.",
+      disclaimer: "Оценка по простым правилам, не диагноз. Обсуди с врачом.",
+    },
+
+    tiers: {
+      monitor: {
+        headline: "Пока всё спокойно",
+        action: "Явных признаков болезни сейчас нет. Отдыхай, живи в обычном режиме, пей как обычно и вернись сюда, если что-то изменится.",
+        specialty: "Врач пока не нужен — самонаблюдение.",
+        timeframe: "Пересмотри через 24–48 часов.",
+      },
+      home_care: {
+        headline: "Домашний уход — и, возможно, тест",
+        action: "Похоже на лёгкое недомогание. Отдыхай, пей больше жидкости, следи за самочувствием. Если есть домашний экспресс-тест — есть смысл сделать. Ограничь близкие контакты, чтобы не заразить других.",
+        specialty: "Домашний уход; при желании — онлайн-консультация (телемедицина).",
+        timeframe: "Наблюдай 2–3 дня; свяжись с врачом, если станет хуже или не проходит.",
+      },
+      gp_soon: {
+        headline: "Стоит показаться терапевту в ближайшие 1–2 дня",
+        action: "Твои симптомы и/или сигнал носимого указывают на инфекцию, которую стоит показать врачу. Обратись к терапевту — очно или онлайн — и обсуди, нужен ли тест или базовые анализы. До этого: отдых, жидкость, изоляция от других.",
+        specialty: "Терапевт / врач первичного звена; подойдёт и телемедицина.",
+        timeframe: "В течение 1–2 дней — раньше, если быстро ухудшается.",
+      },
+      same_day: {
+        headline: "Покажись врачу сегодня",
+        action: "Есть признаки, которые лучше оценить сегодня — высокая или долгая температура, одышка при нагрузке, обезвоживание или быстрое ухудшение. Обратись в неотложную помощь или на приём к терапевту в тот же день. Если кружится голова — не садись за руль, попроси кого-то отвезти.",
+        specialty: "Неотложная помощь / приём у терапевта в тот же день.",
+        timeframe: "Сегодня, в ближайшие часы.",
+      },
+      emergency: {
+        headline: "Нужна экстренная помощь",
+        action: "Один или несколько симптомов требуют немедленной помощи — трудно дышать в покое, боль в груди, спутанность сознания, посинение губ, обморок или очень высокая температура. Позвони в скорую (103 или 112) или отправляйся в приёмное отделение прямо сейчас. Не веди машину сам. Это не диагноз, но такие признаки нужно проверить немедленно.",
+        specialty: "Скорая помощь / приёмное отделение.",
+        timeframe: "Немедленно.",
+      },
+    },
+    preSymptomaticAction: "Организм показывает раннее отклонение, которое иногда бывает за 1–3 дня до симптомов — хороший момент сделать тест и сбавить нагрузку, даже если ты чувствуешь себя нормально. Это ранний сигнал, а не диагноз.",
+
+    categories: {
+      general: "Общее самочувствие",
+      respiratory: "Дыхание и грудная клетка",
+      ent: "Нос и горло",
+      chemosensory: "Обоняние и вкус",
+      gi: "Желудок и кишечник",
+      red_flag: "Тревожные признаки — срочно",
+    },
+
+    symptoms: {
+      fever: "Температура / жар",
+      chills: "Озноб",
+      fatigue: "Слабость, упадок сил",
+      body_aches: "Ломота в теле, боль в мышцах",
+      headache: "Головная боль",
+      worsening_24h: "Заметно хуже за последние сутки",
+      dry_cough: "Сухой кашель",
+      productive_cough: "Влажный кашель (с мокротой)",
+      shortness_of_breath_exertion: "Одышка при нагрузке (по лестнице, при ходьбе)",
+      sore_throat: "Боль в горле",
+      runny_nose: "Насморк или заложенность носа",
+      loss_of_smell: "Потеря обоняния",
+      loss_of_taste: "Потеря вкуса",
+      nausea_vomiting: "Тошнота или рвота",
+      diarrhea: "Диарея (жидкий стул)",
+      severe_breathing_difficulty: "Трудно дышать в покое, сильная одышка",
+      chest_pain_pressure: "Боль или сдавливание в груди",
+      confusion_drowsy: "Спутанность сознания, трудно проснуться",
+      bluish_lips_face: "Синюшность или серость губ, лица, ногтей",
+      fainting: "Обморок, потеря сознания",
+      coughing_blood: "Кровь при кашле",
+      cannot_keep_fluids: "Не можешь пить, признаки сильного обезвоживания",
+      stroke_signs: "Перекосило лицо, невнятная речь или слабость одной стороны тела",
+    },
+
+    feverLevels: {
+      none: "Нет (<37,5 °C)",
+      low: "Субфебрильная (37,5–38,0)",
+      moderate: "Умеренная (38,1–39,0)",
+      high: "Высокая (39,1–40,0)",
+      veryHigh: "Очень высокая (≥40)",
+    },
+    fatigueLevels: { none: "Нет", mild: "Умеренная", severe: "Сильная" },
+
+    duration: {
+      label: "Сколько дней нездоровится?",
+      options: ["<1 дня", "1–2 дня", "3–4 дня", "5–7 дней", ">7 дней"],
+    },
+
+    reasons: {
+      veryHighFever: "Очень высокая температура",
+      redFlag: "Отмечен тревожный признак",
+      highFeverPlusSymptoms: "Высокая температура и другие симптомы",
+      highFever: "Высокая температура",
+      feverDuration: "Температура держится несколько дней",
+      exertional: "Одышка при нагрузке",
+      worsening: "Заметное ухудшение за сутки",
+      symptomLoad: "Несколько симптомов инфекции",
+      anosmia: "Потеря обоняния или вкуса",
+      longDuration: "Симптомы длятся дольше 5 дней",
+      wearableHigh: "Носимое: сильное отклонение от твоей нормы",
+      wearableModerate: "Носимое: умеренное отклонение от нормы",
+      preSymptomatic: "Ранний сигнал до симптомов",
+      noSymptoms: "Симптомы не отмечены",
+    },
+
+    ui: {
+      clearAll: "Сбросить всё",
+      selected: "Отмечено: {n}",
+      hint: "Отвечай только на то, что чувствуешь — пустой опрос показывает спокойный статус.",
+    },
+
+    banner: {
+      title: "Опасные симптомы — сразу за помощью",
+    },
+
+    disclaimers: {
+      banner: "Это не диагноз и не назначение лечения — информация, чтобы обсудить с врачом. Прототип, а не медицинский прибор, и он не заменяет врача.",
+      emergency: "Если это неотложная ситуация — сразу звони в скорую (103 или 112). Не жди результатов опроса.",
+      privacy: "Твои ответы остаются на этом устройстве. Мы не сохраняем их на сервере, не публикуем и никому не передаём. Обновление или закрытие страницы стирает их.",
+    },
+    higherRisk: "Пороги рассчитаны на взрослого без хронических болезней. Детям, беременным, людям старше 65 и тем, у кого хронические болезни сердца, лёгких, диабет или ослаблен иммунитет, стоит обращаться за помощью раньше. У детей опасные признаки другие — не полагайся на этот опрос.",
+    prototype: "Прототип для хакатона, не сертифицированный медицинский инструмент.",
   },
 
   risk: {
@@ -153,7 +288,7 @@ const ru = {
 };
 
 const en: typeof ru = {
-  nav: { home: "Home", forecast: "Forecast", today: "Status", replay: "Timeline", report: "Metrics", logout: "Log out", brand: "Patient Zero" },
+  nav: { home: "Home", forecast: "Forecast", nextSteps: "Next steps", today: "Status", replay: "Timeline", report: "Metrics", logout: "Log out", brand: "Patient Zero" },
 
   connect: {
     h1white: "Your body sends signals",
@@ -186,6 +321,141 @@ const en: typeof ru = {
     trend: { up: "Risk has been rising in recent days", down: "Risk has been falling in recent days", flat: "Risk is holding roughly steady" },
     weekTitle: "Risk level over 2 weeks",
     weekSub: "The higher the line, the more your body deviated from your normal.",
+  },
+
+  nextSteps: {
+    label: "Next steps",
+    title: "What to do next",
+    sub: "Tell us how you feel. We'll suggest how urgent it is and which kind of specialist to see. This is information for a conversation with a doctor, not a diagnosis.",
+    cta: "What to do next →",
+    wearableLine: "Wearable signal right now: {level}",
+    noWearable: "Wearable signal unavailable — assessing from symptoms only.",
+
+    result: {
+      whoTitle: "Who to see",
+      whenTitle: "When",
+      whyTitle: "Why this advice",
+      safetyNet: "If it gets worse, or any red-flag symptom appears, seek help sooner.",
+      disclaimer: "Rule-based guidance, not a diagnosis. Discuss it with a doctor.",
+    },
+
+    tiers: {
+      monitor: {
+        headline: "All quiet for now",
+        action: "No clear signs of illness right now. Rest, keep your usual routine, drink normally, and come back here if anything changes.",
+        specialty: "No doctor needed yet — self-monitoring.",
+        timeframe: "Reassess in 24–48 hours.",
+      },
+      home_care: {
+        headline: "Home care — and maybe a test",
+        action: "Looks like a mild illness. Rest, drink more fluids, keep an eye on how you feel. If you have a home rapid test, it's worth taking. Limit close contact so you don't pass it on.",
+        specialty: "Home care; a short online consult (telemedicine) if you'd like reassurance.",
+        timeframe: "Watch for 2–3 days; contact a doctor if it worsens or doesn't settle.",
+      },
+      gp_soon: {
+        headline: "Worth seeing a GP in the next 1–2 days",
+        action: "Your symptoms and/or wearable signal point to an infection worth a professional look. See a GP — in person or online — and discuss whether you need a test or basic bloodwork. Until then: rest, fluids, keep away from others.",
+        specialty: "General practitioner / primary care; telemedicine is fine.",
+        timeframe: "Within 1–2 days — sooner if it's worsening fast.",
+      },
+      same_day: {
+        headline: "Get seen today",
+        action: "There are signs best evaluated today — high or long-lasting fever, breathlessness on exertion, dehydration, or a fast downhill turn. Go to urgent care or get a same-day GP appointment. If you feel faint, don't drive — ask someone to take you.",
+        specialty: "Urgent care / same-day primary-care appointment.",
+        timeframe: "Today, within hours.",
+      },
+      emergency: {
+        headline: "Get emergency help now",
+        action: "One or more of your symptoms needs immediate care — trouble breathing at rest, chest pain, confusion, blue lips, fainting, or a very high fever. Call emergency services (112, or 911 in the US) or go to the nearest emergency room now. Don't drive yourself. This isn't a diagnosis, but these signs need to be checked right away.",
+        specialty: "Emergency services / emergency room.",
+        timeframe: "Right now.",
+      },
+    },
+    preSymptomaticAction: "Your body shows an early shift that can appear 1–3 days before symptoms — a good moment to test and ease off, even though you feel fine. This is an early signal, not a diagnosis.",
+
+    categories: {
+      general: "General",
+      respiratory: "Breathing & chest",
+      ent: "Nose & throat",
+      chemosensory: "Smell & taste",
+      gi: "Stomach & gut",
+      red_flag: "Red flags — urgent",
+    },
+
+    symptoms: {
+      fever: "Fever",
+      chills: "Chills",
+      fatigue: "Fatigue / low energy",
+      body_aches: "Body aches / muscle pain",
+      headache: "Headache",
+      worsening_24h: "Clearly worse in the last 24 hours",
+      dry_cough: "Dry cough",
+      productive_cough: "Productive cough (with phlegm)",
+      shortness_of_breath_exertion: "Shortness of breath on exertion (stairs, walking)",
+      sore_throat: "Sore throat",
+      runny_nose: "Runny or stuffy nose",
+      loss_of_smell: "Loss of smell",
+      loss_of_taste: "Loss of taste",
+      nausea_vomiting: "Nausea or vomiting",
+      diarrhea: "Diarrhea",
+      severe_breathing_difficulty: "Severe difficulty breathing at rest",
+      chest_pain_pressure: "Chest pain or pressure",
+      confusion_drowsy: "New confusion or hard to wake",
+      bluish_lips_face: "Bluish or grey lips, face, or nails",
+      fainting: "Fainting or loss of consciousness",
+      coughing_blood: "Coughing up blood",
+      cannot_keep_fluids: "Can't keep fluids down / severe dehydration",
+      stroke_signs: "Face drooping, slurred speech, or one-sided weakness",
+    },
+
+    feverLevels: {
+      none: "None (<37.5 °C)",
+      low: "Low-grade (37.5–38.0)",
+      moderate: "Moderate (38.1–39.0)",
+      high: "High (39.1–40.0)",
+      veryHigh: "Very high (≥40)",
+    },
+    fatigueLevels: { none: "None", mild: "Mild", severe: "Severe" },
+
+    duration: {
+      label: "How many days have you felt unwell?",
+      options: ["<1 day", "1–2 days", "3–4 days", "5–7 days", ">7 days"],
+    },
+
+    reasons: {
+      veryHighFever: "Very high fever",
+      redFlag: "A red-flag symptom is checked",
+      highFeverPlusSymptoms: "High fever with other symptoms",
+      highFever: "High fever",
+      feverDuration: "Fever lasting several days",
+      exertional: "Breathlessness on exertion",
+      worsening: "Clearly worse in the last 24 hours",
+      symptomLoad: "Several infection symptoms",
+      anosmia: "Loss of smell or taste",
+      longDuration: "Symptoms lasting more than 5 days",
+      wearableHigh: "Wearable: strong deviation from your normal",
+      wearableModerate: "Wearable: moderate deviation from normal",
+      preSymptomatic: "An early signal before symptoms",
+      noSymptoms: "No symptoms reported",
+    },
+
+    ui: {
+      clearAll: "Clear all",
+      selected: "Selected: {n}",
+      hint: "Answer only what applies — a blank questionnaire shows the calm status.",
+    },
+
+    banner: {
+      title: "Danger signs — get help now",
+    },
+
+    disclaimers: {
+      banner: "This is not a diagnosis or a treatment plan — it's information to discuss with a doctor. A prototype, not a medical device, and not a substitute for a doctor.",
+      emergency: "If this feels life-threatening, call emergency services now (112, or 911 in the US) — don't wait for the questionnaire.",
+      privacy: "Your answers stay on this device. We don't save them to a server, publish them, or share them with anyone. Refreshing or closing the page clears them.",
+    },
+    higherRisk: "Thresholds assume an adult with no chronic conditions. Children, pregnant people, anyone over 65, and people with chronic heart or lung disease, diabetes, or a weakened immune system should seek care sooner. Danger signs differ in children — don't rely on this questionnaire for them.",
+    prototype: "A hackathon prototype, not a certified medical tool.",
   },
 
   risk: {
