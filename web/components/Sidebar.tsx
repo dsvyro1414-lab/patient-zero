@@ -10,6 +10,7 @@ const NAV = [
   { href: "/home", key: "home", icon: HomeIcon },
   { href: "/forecast", key: "forecast", icon: ForecastIcon },
   { href: "/next-steps", key: "nextSteps", icon: NextStepsIcon },
+  { href: "/labs", key: "labs", icon: LabsIcon },
   { href: "/today", key: "today", icon: PulseIcon },
   { href: "/replay", key: "replay", icon: ActivityIcon },
   { href: "/report", key: "report", icon: ReportIcon },
@@ -90,6 +91,14 @@ function NextStepsIcon() {
       <rect x="5" y="4" width="14" height="17" rx="2.5" />
       <path d="M9 3.5h6v2.2H9z" strokeLinejoin="round" />
       <path d="m8.5 12 2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function LabsIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" {...sw}>
+      <path d="M10 3v6.2L5.2 17a2 2 0 0 0 1.7 3h10.2a2 2 0 0 0 1.7-3L14 9.2V3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M9 3h6M7.7 14h8.6" strokeLinecap="round" />
     </svg>
   );
 }

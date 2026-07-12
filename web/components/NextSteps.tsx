@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useT } from "./LocaleProvider";
 import { fmt } from "@/lib/i18n";
 import {
@@ -187,6 +188,14 @@ export function NextSteps({
           setFatigue={setFatigue}
         />
       ))}
+
+      {/* Loop-closer: symptoms/triage → labs → plain-language summary for the doctor */}
+      <Link
+        href="/labs"
+        className="card p-4 block text-sm font-medium text-[color:var(--brand)] hover:bg-[color:var(--hover)] transition-colors"
+      >
+        {ns.labsCta}
+      </Link>
 
       {/* Disclaimers */}
       <div className="card-2 p-5 space-y-2.5">

@@ -11,7 +11,7 @@ export function fmt(s: string, vars: Record<string, string | number>): string {
 }
 
 const ru = {
-  nav: { home: "Главная", forecast: "Прогноз", nextSteps: "Дальше", today: "Статус", replay: "Таймлайн", report: "Метрики", logout: "Выйти", brand: "Patient Zero" },
+  nav: { home: "Главная", forecast: "Прогноз", nextSteps: "Дальше", labs: "Анализы", today: "Статус", replay: "Таймлайн", report: "Метрики", logout: "Выйти", brand: "Patient Zero" },
 
   connect: {
     h1white: "Твой организм даёт сигналы",
@@ -51,6 +51,7 @@ const ru = {
     title: "Что делать дальше",
     sub: "Отметь, что чувствуешь. Мы подскажем, насколько это срочно и к какому специалисту стоит обратиться. Это информация для разговора с врачом, а не диагноз.",
     cta: "Что делать дальше →",
+    labsCta: "Есть свежие анализы? Собери из них сводку для врача →",
     wearableLine: "Сигнал носимого сейчас: {level}",
     noWearable: "Сигнал носимого недоступен — оцениваем только по симптомам.",
 
@@ -181,6 +182,78 @@ const ru = {
     prototype: "Прототип для хакатона, не сертифицированный медицинский инструмент.",
   },
 
+  labs: {
+    label: "Анализы",
+    title: "Анализы и сводка для врача",
+    sub: "Введи значения из своих анализов — AI соберёт их вместе с сигналом носимого в понятную сводку, которую можно показать врачу. Это материал для разговора с врачом, а не диагноз.",
+
+    consent: {
+      title: "Прежде чем продолжить",
+      body: "Чтобы собрать сводку, введённые значения отправятся во внешний AI-сервис (Anthropic Claude), который обработает их и вернёт текст. Мы не сохраняем анализы на своём сервере и не публикуем их. Не вводи данные, которые не готов(а) отправить.",
+      b1: "Данные уходят во внешний AI-сервис только в момент нажатия кнопки «Собрать сводку».",
+      b2: "Мы не храним анализы на сервере, не показываем их другим и не коммитим в репозиторий.",
+      b3: "Это прототип для хакатона. Не загружай сюда чужие медицинские данные.",
+      checkbox: "Понимаю и согласен(на) отправить введённые значения для анализа.",
+      agree: "Согласиться и продолжить",
+    },
+
+    labNames: {
+      crp: "C-реактивный белок (CRP)",
+      wbc: "Лейкоциты (WBC)",
+      neutrophils_pct: "Нейтрофилы",
+      lymphocytes_pct: "Лимфоциты",
+      procalcitonin: "Прокальцитонин (PCT)",
+      esr: "СОЭ",
+    },
+
+    form: {
+      heading: "Введи значения анализов",
+      refLabel: "Заполняй только то, что есть в твоём бланке. Все поля необязательны.",
+      refPrefix: "типичная норма: {range}",
+      otherLabel: "Другие результаты или заметки",
+      otherPlaceholder: "Например: ферритин 320 мкг/л, D-димер в норме…",
+      noteLabel: "Как ты себя чувствуешь (необязательно)",
+      notePlaceholder: "Например: третий день температура и слабость.",
+      generate: "Собрать сводку для врача",
+      generating: "Собираю…",
+    },
+
+    physio: {
+      title: "Сигнал носимого будет приложен",
+      sub: "Эти данные детектора отправятся вместе с анализами, чтобы AI связал физиологию и результаты.",
+      riskLine: "Уровень риска сейчас: {level} ({pct}%).",
+      lead: "Тревога сработала примерно за {d} дн. до первых симптомов.",
+      signals: "Сильнее всего отклонились:",
+      attachNote: "Показатели детектора; интерпретирует их врач.",
+    },
+
+    result: {
+      title: "Сводка для врача",
+      copy: "Скопировать",
+      copied: "Скопировано",
+      aiNote: "Сгенерировано AI · Не диагноз · Обсуди с врачом",
+    },
+
+    errors: {
+      ai_unconfigured: "AI-сервис не настроен: не задан ключ ANTHROPIC_API_KEY. Добавь его в web/.env.local.",
+      bad_request: "Не удалось прочитать данные. Обнови страницу и попробуй снова.",
+      no_input: "Введи хотя бы одно значение или заметку.",
+      refused: "AI не смог обработать этот запрос. Покажи анализы врачу напрямую.",
+      empty: "Пустой ответ. Попробуй ещё раз.",
+      rate_limited: "Слишком много запросов. Подожди минуту и попробуй снова.",
+      ai_error: "AI-сервис временно недоступен. Попробуй позже.",
+      server_error: "Не удалось собрать сводку. Попробуй ещё раз.",
+      network: "Нет связи с сервером. Проверь интернет и попробуй снова.",
+    },
+
+    disclaimers: {
+      transmission: "При нажатии значения отправляются во внешний AI-сервис (Anthropic) и не сохраняются на нашем сервере.",
+      notDiagnosis: "Это не диагноз и не назначение лечения — материал для разговора с врачом. Анализы интерпретирует только врач с учётом твоей истории и норм лаборатории.",
+      phi: "Анализы — чувствительные данные. Они остаются в этой сессии в браузере, не сохраняются на сервере и не публикуются.",
+      prototype: "Прототип для хакатона, не сертифицированный медицинский инструмент.",
+    },
+  },
+
   risk: {
     word: { high: "Высокий", moderate: "Средний", low: "Низкий" },
     sub: "риск заболеть",
@@ -288,7 +361,7 @@ const ru = {
 };
 
 const en: typeof ru = {
-  nav: { home: "Home", forecast: "Forecast", nextSteps: "Next steps", today: "Status", replay: "Timeline", report: "Metrics", logout: "Log out", brand: "Patient Zero" },
+  nav: { home: "Home", forecast: "Forecast", nextSteps: "Next steps", labs: "Labs", today: "Status", replay: "Timeline", report: "Metrics", logout: "Log out", brand: "Patient Zero" },
 
   connect: {
     h1white: "Your body sends signals",
@@ -328,6 +401,7 @@ const en: typeof ru = {
     title: "What to do next",
     sub: "Tell us how you feel. We'll suggest how urgent it is and which kind of specialist to see. This is information for a conversation with a doctor, not a diagnosis.",
     cta: "What to do next →",
+    labsCta: "Have recent lab results? Turn them into a summary for your doctor →",
     wearableLine: "Wearable signal right now: {level}",
     noWearable: "Wearable signal unavailable — assessing from symptoms only.",
 
@@ -456,6 +530,78 @@ const en: typeof ru = {
     },
     higherRisk: "Thresholds assume an adult with no chronic conditions. Children, pregnant people, anyone over 65, and people with chronic heart or lung disease, diabetes, or a weakened immune system should seek care sooner. Danger signs differ in children — don't rely on this questionnaire for them.",
     prototype: "A hackathon prototype, not a certified medical tool.",
+  },
+
+  labs: {
+    label: "Labs",
+    title: "Labs & summary for your doctor",
+    sub: "Enter the values from your lab report — the AI pulls them together with your wearable signal into a plain-language summary you can show your doctor. This is information for a conversation with a doctor, not a diagnosis.",
+
+    consent: {
+      title: "Before you continue",
+      body: "To build the summary, the values you enter are sent to an external AI service (Anthropic Claude), which processes them and returns text. We don't store your labs on our server or publish them. Don't enter anything you're not willing to send.",
+      b1: "Data leaves for the external AI service only when you press “Build summary”.",
+      b2: "We don't keep your labs on a server, show them to anyone, or commit them to the repo.",
+      b3: "This is a hackathon prototype. Don't upload anyone else's medical data here.",
+      checkbox: "I understand and agree to send the entered values for analysis.",
+      agree: "Agree and continue",
+    },
+
+    labNames: {
+      crp: "C-reactive protein (CRP)",
+      wbc: "White blood cells (WBC)",
+      neutrophils_pct: "Neutrophils",
+      lymphocytes_pct: "Lymphocytes",
+      procalcitonin: "Procalcitonin (PCT)",
+      esr: "ESR",
+    },
+
+    form: {
+      heading: "Enter your lab values",
+      refLabel: "Fill in only what's on your report. All fields are optional.",
+      refPrefix: "typical range: {range}",
+      otherLabel: "Other results or notes",
+      otherPlaceholder: "e.g. ferritin 320 µg/L, D-dimer normal…",
+      noteLabel: "How you feel (optional)",
+      notePlaceholder: "e.g. third day of fever and fatigue.",
+      generate: "Build summary for your doctor",
+      generating: "Building…",
+    },
+
+    physio: {
+      title: "Your wearable signal will be attached",
+      sub: "This detector data is sent along with your labs so the AI can connect your physiology to the results.",
+      riskLine: "Illness-risk level right now: {level} ({pct}%).",
+      lead: "The alarm fired about {d} day(s) before the first symptoms.",
+      signals: "Deviating most:",
+      attachNote: "Detector readings; your doctor interprets them.",
+    },
+
+    result: {
+      title: "Summary for your doctor",
+      copy: "Copy",
+      copied: "Copied",
+      aiNote: "Generated by AI · Not a diagnosis · Discuss with a doctor",
+    },
+
+    errors: {
+      ai_unconfigured: "AI service isn't configured: ANTHROPIC_API_KEY is missing. Add it to web/.env.local.",
+      bad_request: "Couldn't read the data. Refresh the page and try again.",
+      no_input: "Enter at least one value or a note.",
+      refused: "The AI couldn't process this request. Show your labs to your doctor directly.",
+      empty: "Empty response. Please try again.",
+      rate_limited: "Too many requests. Wait a minute and try again.",
+      ai_error: "The AI service is temporarily unavailable. Try again later.",
+      server_error: "Couldn't build the summary. Please try again.",
+      network: "No connection to the server. Check your internet and try again.",
+    },
+
+    disclaimers: {
+      transmission: "On submit, your values are sent to an external AI service (Anthropic) and are not stored on our server.",
+      notDiagnosis: "This is not a diagnosis or a treatment plan — it's material for a conversation with your doctor. Only a clinician can interpret labs against your history and the lab's own reference ranges.",
+      phi: "Labs are sensitive data. They stay in this browser session, are not saved to a server, and are not published.",
+      prototype: "A hackathon prototype, not a certified medical tool.",
+    },
   },
 
   risk: {
