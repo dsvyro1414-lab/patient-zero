@@ -29,6 +29,43 @@ export const maxDuration = 60; // give the model room; well under this in practi
 // capable but mandates 30-day retention, which is wrong for lab values.)
 const MODEL = "claude-opus-4-8";
 
+// --- abuse guards: this is a PUBLIC endpoint that spends real API credits ---
+// The body-size + per-field caps are the robust, primary cost bound (they stop
+// context-stuffing regardless of rate). The rate limiter is in-memory and
+// PER-INSTANCE — on serverless it resets on cold start and is not shared across
+// concurrent instances, so it's a demo-grade throttle, not a replacement for a
+// shared store (Upstash / Vercel KV) in a real deployment.
+const MAX_BODY_CHARS = 24_000; // a legit request is < ~5KB; blocks context-stuffing
+const RL_WINDOW_MS = 60_000;
+const RL_MAX_PER_WINDOW = 6; // per client IP
+const GLOBAL_DAILY_CAP = 400; // fail-closed global invocation cap
+
+const ipHits = new Map<string, number[]>();
+let rlDay = "";
+let rlDayCount = 0;
+
+function rateLimit(ip: string): "ok" | "ip" | "global" {
+  const now = Date.now();
+  const today = new Date(now).toISOString().slice(0, 10);
+  if (today !== rlDay) {
+    rlDay = today;
+    rlDayCount = 0;
+  }
+  if (rlDayCount >= GLOBAL_DAILY_CAP) return "global";
+  const hits = (ipHits.get(ip) ?? []).filter((t) => now - t < RL_WINDOW_MS);
+  if (hits.length >= RL_MAX_PER_WINDOW) {
+    ipHits.set(ip, hits);
+    return "ip";
+  }
+  hits.push(now);
+  ipHits.set(ip, hits);
+  rlDayCount++;
+  if (ipHits.size > 5000) ipHits.clear(); // bound memory against IP churn
+  return "ok";
+}
+
+const RISK_LEVELS = new Set(["low", "moderate", "high"]);
+
 const SYSTEM = `You are a careful medical-communication assistant inside a consumer wellness prototype called Patient Zero. A user has entered their own lab-test values and, optionally, a summary of what their wearable device detected. Your job is to write a short, plain-language "summary to bring to your doctor" that helps them have a productive conversation at their appointment.
 
 HARD RULES — never break these:
@@ -55,9 +92,19 @@ export async function POST(req: Request): Promise<NextResponse> {
     return err("ai_unconfigured", 503);
   }
 
+  // Shed abusive load before doing any work (early, from the header alone).
+  const ip =
+    (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown";
+  if (rateLimit(ip) !== "ok") return err("rate_limited", 429);
+
+  // Hard body cap before parsing — a legit payload is tiny; this stops an
+  // attacker from packing the model's context window to amplify per-call cost.
+  const raw = await req.text();
+  if (raw.length > MAX_BODY_CHARS) return err("too_large", 413);
+
   let body: LabsSummaryRequest;
   try {
-    body = (await req.json()) as LabsSummaryRequest;
+    body = JSON.parse(raw) as LabsSummaryRequest;
   } catch {
     return err("bad_request", 400);
   }
@@ -66,7 +113,7 @@ export async function POST(req: Request): Promise<NextResponse> {
   const labs = sanitizeLabs(body?.labs);
   const other = clip(body?.otherResults, MAX_OTHER_CHARS);
   const note = clip(body?.symptomsNote, MAX_NOTE_CHARS);
-  const physio = body?.physio ?? null;
+  const physio = sanitizePhysio(body?.physio);
 
   if (labs.length === 0 && !other && !physio) {
     return err("no_input", 400);
@@ -124,16 +171,55 @@ function clip(v: unknown, max: number): string {
 
 function sanitizeLabs(input: unknown): LabEntry[] {
   if (!Array.isArray(input)) return [];
-  const out: LabEntry[] = [];
-  for (const item of input) {
+  // Dedup by key → at most one entry per known marker (LAB_DEFS.length total),
+  // so a repeated-entry payload can't inflate the prompt. Cap the scan too.
+  const byKey = new Map<string, LabEntry>();
+  for (const item of input.slice(0, 64)) {
     const key = (item as Partial<LabEntry>)?.key;
     const def = key ? LAB_BY_KEY[key] : undefined;
     if (!def) continue;
     const value = Number((item as Partial<LabEntry>)?.value);
     if (!Number.isFinite(value) || value < 0 || value > def.max) continue;
-    out.push({ key: def.key, value });
+    byKey.set(def.key, { key: def.key, value });
   }
-  return out;
+  return [...byKey.values()];
+}
+
+// The physio object is attacker-controllable on a direct POST (the trusted
+// client builds it from demo data, but the route can't assume that). Coerce
+// every field to a safe, bounded shape before it reaches the prompt.
+function sanitizePhysio(input: unknown): PhysioSummary | null {
+  if (!input || typeof input !== "object") return null;
+  const p = input as Record<string, unknown>;
+
+  const riskLevel = String(p.riskLevel);
+  if (!RISK_LEVELS.has(riskLevel)) return null;
+
+  const riskPctRaw = Number(p.riskPct);
+  if (!Number.isFinite(riskPctRaw)) return null;
+  const riskPct = Math.max(0, Math.min(100, Math.round(riskPctRaw)));
+
+  const leadRaw = Number(p.leadDays);
+  const leadDays = Number.isFinite(leadRaw)
+    ? Math.max(0, Math.min(60, Math.round(leadRaw)))
+    : null;
+
+  const sigIn = Array.isArray(p.topSignals) ? p.topSignals.slice(0, 8) : [];
+  const topSignals = sigIn.flatMap((s) => {
+    if (!s || typeof s !== "object") return [];
+    const key = String((s as Record<string, unknown>).key ?? "").slice(0, 40);
+    const z = Number((s as Record<string, unknown>).z);
+    if (!key || !Number.isFinite(z)) return [];
+    return [{ key, z }];
+  });
+
+  return {
+    riskLevel: riskLevel as PhysioSummary["riskLevel"],
+    riskPct,
+    alarm: p.alarm === true,
+    leadDays,
+    topSignals,
+  };
 }
 
 function buildUserMessage(
