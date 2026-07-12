@@ -98,8 +98,9 @@ export function NextSteps({
         </div>
       </div>
 
-      {/* Live triage result — sticky so it stays visible while answering */}
-      <div className="sticky top-4 z-10">
+      {/* Live triage result — scrolls with the page (a sticky, translucent card
+          overlapped the questionnaire below it as you scrolled). */}
+      <div>
         <div
           className="card p-6"
           style={{ borderColor: `rgba(${rgb},0.45)`, background: `rgba(${rgb},0.06)` }}
