@@ -8,9 +8,6 @@ import { useT } from "./LocaleProvider";
 
 const NAV = [
   { href: "/home", key: "home", icon: HomeIcon },
-  { href: "/forecast", key: "forecast", icon: ForecastIcon },
-  { href: "/next-steps", key: "nextSteps", icon: NextStepsIcon },
-  { href: "/labs", key: "labs", icon: LabsIcon },
   { href: "/today", key: "today", icon: PulseIcon },
   { href: "/replay", key: "replay", icon: ActivityIcon },
   { href: "/report", key: "report", icon: ReportIcon },
@@ -52,14 +49,6 @@ export function Sidebar() {
 
       <div className="mt-auto flex flex-col items-center gap-4">
         <LangToggle />
-        <Link
-          href="/"
-          aria-label={t.nav.logout}
-          title={t.nav.logout}
-          className="grid place-items-center w-11 h-11 rounded-xl text-[color:var(--muted)] hover:bg-[color:var(--hover)] hover:text-[color:var(--text)] transition-colors"
-        >
-          <LogoutIcon />
-        </Link>
       </div>
     </aside>
   );
@@ -72,33 +61,6 @@ function HomeIcon() {
     <svg width="20" height="20" viewBox="0 0 24 24" {...sw}>
       <path d="M4 11 12 4l8 7" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M6 9.8V19h12V9.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-function ForecastIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" {...sw}>
-      <path d="M12 3l1.8 4.4L18 9l-4.2 1.6L12 15l-1.8-4.4L6 9l4.2-1.6L12 3Z"
-        strokeLinejoin="round" />
-      <path d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8Z"
-        strokeLinejoin="round" />
-    </svg>
-  );
-}
-function NextStepsIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" {...sw}>
-      <rect x="5" y="4" width="14" height="17" rx="2.5" />
-      <path d="M9 3.5h6v2.2H9z" strokeLinejoin="round" />
-      <path d="m8.5 12 2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-function LabsIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" {...sw}>
-      <path d="M10 3v6.2L5.2 17a2 2 0 0 0 1.7 3h10.2a2 2 0 0 0 1.7-3L14 9.2V3" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M9 3h6M7.7 14h8.6" strokeLinecap="round" />
     </svg>
   );
 }
@@ -123,13 +85,6 @@ function ReportIcon() {
     <svg width="20" height="20" viewBox="0 0 24 24" {...sw}>
       <rect x="5" y="3.5" width="14" height="17" rx="2.5" />
       <path d="M9 8.5h6M9 12h6M9 15.5h4" strokeLinecap="round" />
-    </svg>
-  );
-}
-function LogoutIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" {...sw}>
-      <path d="M9 4H5v16h4M15 8l4 4-4 4M19 12H9" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

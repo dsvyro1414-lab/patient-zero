@@ -99,7 +99,10 @@ export default async function ReportPage() {
             </div>
           </div>
         </div>
-        <p className="muted text-sm max-w-xs">{tr.notDiagnosis}</p>
+        <div className="max-w-xs space-y-2">
+          <p className="muted text-sm">{tr.notDiagnosis}</p>
+          <p className="muted text-xs">{tr.scoreMode}</p>
+        </div>
       </div>
 
       {real && <p className="muted text-xs leading-relaxed">{tr.footnoteReal}</p>}

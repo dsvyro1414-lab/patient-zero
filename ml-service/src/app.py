@@ -4,7 +4,7 @@ FastAPI ML microservice — the boundary the Next.js frontend calls.
 Endpoints:
   GET  /health          liveness
   GET  /evaluate        the trained model's honest metrics (metrics.json + ROC)
-  POST /score-history   score a subject's biomarker series -> per-day probs +
+  POST /score-history   score a subject's biomarker series -> per-day scores +
                         changepoint alarms (powers the replay timeline + webhook)
   GET  /demo            a ready-made scored sick-episode from the demo dataset
 
@@ -12,8 +12,11 @@ Run:  uvicorn app:app --reload --port 8000     (from ml-service/src)
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
+from datetime import datetime
+from typing import Literal
 
 import pandas as pd
 from fastapi import FastAPI, HTTPException
@@ -32,6 +35,7 @@ app.add_middleware(
 
 class DayRecord(BaseModel):
     day_index: int
+    as_of: datetime | None = None
     resting_heart_rate: float
     hrv_rmssd_milli: float | None = None
     respiratory_rate: float | None = None
@@ -41,6 +45,8 @@ class DayRecord(BaseModel):
 
 class ScoreRequest(BaseModel):
     subject_id: str = "user"
+    source_mode: Literal["personal_export", "personal_live", "synthetic_test"] = "synthetic_test"
+    provider: str | None = Field(default=None, max_length=80)
     history: list[DayRecord] = Field(..., min_length=1)
 
 
@@ -66,13 +72,21 @@ def evaluate() -> dict:
 def score(req: ScoreRequest) -> dict:
     df = pd.DataFrame([r.model_dump() for r in req.history])
     df["subject_id"] = req.subject_id
-    return score_history(df)
+    integration_status = "implemented" if req.source_mode == "synthetic_test" else "planned"
+    return score_history(
+        df,
+        source_mode=req.source_mode,
+        integration_status=integration_status,
+        provider=req.provider,
+        adapter_version="legacy-direct-history-v1",
+        provenance={"input": "score-history", "index": "day_index"},
+    )
 
 
 @app.get("/demo")
 def demo() -> dict:
     """Score a real illness episode from the loaded dataset for the replay demo."""
-    from dataset import load
+    from dataset import STANFORD_CSV, load
     data, src = load()
     # prefer a subject with exactly ONE clean episode and enough baseline
     # before + recovery after it, so the replay is a legible "money shot".
@@ -88,7 +102,22 @@ def demo() -> dict:
     if sid is None:
         sid = data["subject_id"].unique()[0]
     sub = data[data["subject_id"] == sid]
-    result = score_history(sub)
+    source_mode = "research_demo" if src == "stanford" else "synthetic_test"
+    if src == "stanford" and os.path.exists(STANFORD_CSV):
+        with open(STANFORD_CSV, "rb") as dataset_file:
+            dataset_version = f"sha256:{hashlib.sha256(dataset_file.read()).hexdigest()}"
+    else:
+        dataset_version = "synthetic-generator-v1"
+    result = score_history(
+        sub,
+        source_mode=source_mode,
+        integration_status="implemented",
+        provider="fitbit" if src == "stanford" else None,
+        adapter_version=f"legacy-{src}-loader-v1",
+        dataset_version=dataset_version,
+        demo_case_id=str(sid),
+        provenance={"dataset": src, "index": "day_index"},
+    )
     result["source"] = src
     result["subject_id"] = str(sid)
     if "onset" in sub.columns and (sub["onset"] == 1).any():

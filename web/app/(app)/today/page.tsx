@@ -3,9 +3,9 @@ import { getT } from "@/lib/locale-server";
 import { bandFor, pickToday } from "@/lib/status";
 import { Gauge } from "@/components/Gauge";
 import { WhyBars } from "@/components/WhyBars";
-import { ActionCard } from "@/components/ActionCard";
 import { SIGNAL_BY_KEY } from "@/lib/signals";
-import { fmt, type Dict } from "@/lib/i18n";
+import { fmt } from "@/lib/i18n";
+import { scoreForRecord } from "@/lib/risk-score";
 
 export const dynamic = "force-dynamic";
 
@@ -16,11 +16,23 @@ export default async function TodayPage() {
 
   const rec = pickToday(demo);
   const status = bandFor(rec);
-  const band = status.band;
-  const prob = rec.infection_probability ?? 0;
+  const score = scoreForRecord(rec);
   const hdi = rec.health_deviation_index;
-  const bandLabel = band === "red" ? "RED" : band === "amber" ? "AMBER" : "GREEN";
   const tt = t.today;
+
+  if (!status || score == null) {
+    return (
+      <DecisionUnavailable
+        title={tt.unavailableTitle}
+        body={fmt(tt.unavailableBody, {
+          status: rec.decision_status,
+          reasons: rec.reason_codes.join(", ") || "—",
+        })}
+      />
+    );
+  }
+  const band = status.band;
+  const bandLabel = band === "red" ? "RED" : band === "amber" ? "AMBER" : "GREEN";
 
   const top = Object.entries(rec.signals)
     .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
@@ -50,13 +62,13 @@ export default async function TodayPage() {
 
             <div className="grid grid-cols-2 gap-6 mt-7 pt-6 border-t border-[color:var(--border)]">
               <div>
-                <div className="muted text-xs mb-3">{tt.infectionProb}</div>
-                <Gauge value={prob} color={status.color} />
+                <div className="muted text-xs mb-3">{tt.riskScore}</div>
+                <Gauge value={score} color={status.color} />
               </div>
               <div>
                 <div className="muted text-xs mb-2">{tt.hdi}</div>
                 <div className="text-4xl font-bold tracking-tight">{hdi.toFixed(2)}</div>
-                <HdiMeter value={hdi} labels={tt.meter} />
+                <div className="muted text-[11px] mt-2">{tt.hdiNote}</div>
               </div>
             </div>
           </div>
@@ -66,7 +78,7 @@ export default async function TodayPage() {
             <p className="text-sm leading-relaxed text-[color:var(--text)]/90">
               {fmt(tt.explain[band], { top })}
             </p>
-            <p className="muted text-xs mt-4">{tt.aiNote}</p>
+            <p className="muted text-xs mt-4">{tt.scoreDisclaimer}</p>
           </div>
         </div>
 
@@ -75,34 +87,20 @@ export default async function TodayPage() {
             <h3 className="font-semibold mb-4">{tt.whyTitle}</h3>
             <WhyBars signals={rec.signals} note={tt.sigmaNote} />
           </div>
-          <ActionCard band={band} t={t.actions} />
         </div>
       </div>
 
       <p className="muted text-xs">
         {fmt(tt.source, {
           source: demo.source === "synthetic" ? tt.synthetic : demo.source,
+          mode: demo.source_mode,
+          integration: rec.integration_status,
+          baseline: rec.baseline_status,
+          quality: rec.data_quality.status,
+          version: rec.score_version,
           model: demo.model_loaded ? tt.sourceModelOn : tt.sourceModelOff,
         })}
       </p>
-    </div>
-  );
-}
-
-function HdiMeter({ value, labels }: { value: number; labels: Dict["today"]["meter"] }) {
-  const pct = Math.min(1, value / 5);
-  const label = value >= 2.5 ? labels.high : value >= 1 ? labels.moderate : labels.low;
-  const color = value >= 2.5 ? "var(--red)" : value >= 1 ? "var(--amber)" : "var(--green)";
-  return (
-    <div className="mt-3">
-      <div className="h-1.5 rounded-full bg-[color:var(--track)] overflow-hidden">
-        <div className="h-full rounded-full" style={{ width: `${pct * 100}%`, background: color }} />
-      </div>
-      <div className="flex justify-between text-[11px] muted mt-1.5">
-        <span>0</span>
-        <span style={{ color }}>{label}</span>
-        <span>5+</span>
-      </div>
     </div>
   );
 }
@@ -126,6 +124,15 @@ function ServiceDown({ title, hint }: { title: string; hint: string }) {
     <div className="card p-8 max-w-lg">
       <h2 className="font-semibold text-lg mb-2">{title}</h2>
       <p className="muted text-sm">{hint}</p>
+    </div>
+  );
+}
+
+function DecisionUnavailable({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="card p-8 max-w-lg">
+      <h2 className="font-semibold text-lg mb-2">{title}</h2>
+      <p className="muted text-sm">{body}</p>
     </div>
   );
 }

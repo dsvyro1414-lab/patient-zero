@@ -1,11 +1,11 @@
-// Semicircular gauge for infection probability. Pure SVG, no deps.
+// Display-only semicircular gauge for the backend-owned 0–100 score.
 export function Gauge({ value, color }: { value: number; color: string }) {
-  const pct = Math.max(0, Math.min(1, value));
+  const score = value;
   const r = 52;
   const cx = 70;
   const cy = 70;
   const circ = Math.PI * r; // half circle length
-  const dash = circ * pct;
+  const dash = circ * (score / 100);
 
   return (
     <div className="relative w-[140px] h-[86px]">
@@ -28,12 +28,12 @@ export function Gauge({ value, color }: { value: number; color: string }) {
       </svg>
       <div className="absolute inset-0 flex items-end justify-center pb-1">
         <span className="text-2xl font-bold" style={{ color }}>
-          {Math.round(pct * 100)}%
+          {score} / 100
         </span>
       </div>
       <div className="flex justify-between text-[11px] muted px-1 -mt-1">
-        <span>0%</span>
-        <span>100%</span>
+        <span>0</span>
+        <span>100</span>
       </div>
     </div>
   );

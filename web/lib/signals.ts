@@ -29,7 +29,7 @@ export const SIGNAL_BY_KEY: Record<string, SignalMeta> = Object.fromEntries(
 
 export const COLOR = {
   hdi: "#16a34a",
-  prob: "#7c3aed",
+  score: "#7c3aed",
   green: "#16a34a",
   amber: "#f59e0b",
   red: "#ef4444",

@@ -4,9 +4,9 @@ import { getLocale } from "@/lib/locale-server";
 import { LocaleProvider } from "@/components/LocaleProvider";
 
 export const metadata: Metadata = {
-  title: "Patient Zero — pre-symptomatic illness radar",
+  title: "Patient Zero — wearable research demo",
   description:
-    "Your Whoop knows you're getting sick before you do. Alerts 1–3 days before the first symptom.",
+    "A retrospective research demo of wearable-signal shifts relative to a personal baseline.",
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

@@ -47,13 +47,13 @@ export default async function ConnectPage() {
             className="mt-9 inline-flex items-center gap-3 rounded-2xl bg-white pl-2 pr-6 py-2 font-semibold text-[#0b0d10] hover:bg-white/90 transition-colors"
           >
             <span className="grid place-items-center w-9 h-9 rounded-full bg-[#0b0d10] text-white text-[13px] font-bold">
-              W
+              R
             </span>
             {t.button}
           </Link>
 
           <div className="mt-4 flex items-center gap-2 text-sm text-[color:var(--muted)]">
-            <LockIcon /> {t.oauth}
+            <DatasetIcon /> {t.oauth}
           </div>
         </div>
 
@@ -68,11 +68,11 @@ export default async function ConnectPage() {
   );
 }
 
-function LockIcon() {
+function DatasetIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <rect x="4" y="10" width="16" height="10" rx="2.5" stroke="currentColor" strokeWidth="1.7" />
-      <path d="M8 10V7a4 4 0 1 1 8 0v3" stroke="currentColor" strokeWidth="1.7" />
+      <ellipse cx="12" cy="5" rx="7" ry="3" stroke="currentColor" strokeWidth="1.7" />
+      <path d="M5 5v7c0 1.7 3.1 3 7 3s7-1.3 7-3V5M5 12v7c0 1.7 3.1 3 7 3s7-1.3 7-3v-7" stroke="currentColor" strokeWidth="1.7" />
     </svg>
   );
 }

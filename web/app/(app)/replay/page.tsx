@@ -9,6 +9,7 @@ import type { DemoResult, DayRecord } from "@/lib/api";
 import { SIGNALS, SIGNAL_BY_KEY, COLOR, fmtZ } from "@/lib/signals";
 import { fmt, type Dict } from "@/lib/i18n";
 import { useT } from "@/components/LocaleProvider";
+import { scoreForRecord } from "@/lib/risk-score";
 
 const LEG_KEY: Record<string, keyof Dict["replay"]["legend"]> = {
   resting_heart_rate: "rhr",
@@ -48,7 +49,7 @@ export default function ReplayPage() {
           rel: r.day_index - onset,
           day: r.day_index,
           hdi: r.health_deviation_index,
-          prob: r.infection_probability == null ? null : r.infection_probability * 100,
+          score: scoreForRecord(r),
         };
         for (const s of SIGNALS) row[s.key] = r.signals[s.key] ?? null;
         return row;
@@ -73,9 +74,17 @@ export default function ReplayPage() {
   return (
     <div className="space-y-4">
       <div className="section-label">{tr.label}</div>
+      <p className="muted text-xs">
+        {fmt(tr.contractMeta, {
+          source: demo.source_mode,
+          integration: demo.integration_status,
+          version: demo.score_version,
+        })}
+      </p>
 
       <div className="card p-6">
         <Legend tr={tr} />
+        <p className="muted text-xs mt-2">{tr.scoreDisclaimer}</p>
 
         {/* signals in shared σ-space */}
         <div className="h-[240px] mt-2">
@@ -103,7 +112,7 @@ export default function ReplayPage() {
           </ResponsiveContainer>
         </div>
 
-        {/* HDI + infection probability */}
+        {/* detector deviation + canonical risk score */}
         <div className="h-[150px] mt-1">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={prepared.rows} margin={{ top: 6, right: 12, left: -18, bottom: 4 }}>
@@ -111,14 +120,14 @@ export default function ReplayPage() {
               <XAxis dataKey="rel" tick={{ fontSize: 11, fill: "var(--muted)" }} tickLine={false}
                 label={{ value: tr.daysAxis, position: "insideBottom", offset: -2, fontSize: 11, fill: "var(--muted)" }} />
               <YAxis yAxisId="l" tick={{ fontSize: 11, fill: "var(--muted)" }} tickLine={false} axisLine={false} />
-              <YAxis yAxisId="r" orientation="right" domain={[0, 100]} unit="%"
+              <YAxis yAxisId="r" orientation="right" domain={[0, 100]}
                 tick={{ fontSize: 11, fill: "var(--muted)" }} tickLine={false} axisLine={false} />
               <Tooltip content={<HdiTip tr={tr} />} />
               {prepared.alarmRel != null && <ReferenceLine yAxisId="l" x={prepared.alarmRel} stroke={COLOR.amber} strokeWidth={1.5} />}
               <ReferenceLine yAxisId="l" x={0} stroke={COLOR.red} strokeDasharray="5 4" />
               <ReferenceLine yAxisId="l" x={selRel} stroke="var(--text)" strokeOpacity={0.35} />
               <Line yAxisId="l" type="monotone" dataKey="hdi" stroke={COLOR.hdi} dot={false} strokeWidth={2} isAnimationActive={false} />
-              <Line yAxisId="r" type="monotone" dataKey="prob" stroke={COLOR.prob} dot={false} strokeWidth={2} connectNulls isAnimationActive={false} />
+              <Line yAxisId="r" type="monotone" dataKey="score" stroke={COLOR.score} dot={false} strokeWidth={2} connectNulls isAnimationActive={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -137,7 +146,7 @@ function Legend({ tr }: { tr: Dict["replay"] }) {
     ...SIGNALS.map((s) => ({ label: tr.legend[LEG_KEY[s.key]], color: s.color, dash: false })),
     { label: tr.legend.baseline, color: "var(--muted)", dash: true },
     { label: tr.legend.hdi, color: COLOR.hdi, dash: false },
-    { label: tr.legend.prob, color: COLOR.prob, dash: false },
+    { label: tr.legend.score, color: COLOR.score, dash: false },
   ];
   return (
     <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs muted mb-1">
@@ -155,6 +164,7 @@ function Scrubber({
   min, max, sel, setSel, selRel, rec, tr,
 }: { min: number; max: number; sel: number; setSel: (n: number) => void; selRel: number; rec: DayRecord; tr: Dict["replay"] }) {
   const pct = max > min ? ((sel - min) / (max - min)) * 100 : 0;
+  const score = scoreForRecord(rec);
   return (
     <div className="card p-6">
       <div className="flex items-center gap-5">
@@ -179,7 +189,7 @@ function Scrubber({
       <p className="muted text-xs mt-4 flex items-center gap-2">
         {rec.alarm && <span className="inline-block w-2 h-2 rounded-full" style={{ background: "var(--red)" }} />}
         {rec.alarm ? tr.alarmActive : fmt(tr.hdiLine, { v: rec.health_deviation_index.toFixed(2) })}
-        {rec.infection_probability != null && fmt(tr.prob, { p: Math.round(rec.infection_probability * 100) })}
+        {score == null ? ` · ${tr.scoreUnavailable}` : fmt(tr.scoreLine, { n: score })}
       </p>
     </div>
   );
@@ -231,10 +241,10 @@ function HdiTip({ active, payload, label, tr }: any) {
   return (
     <div className="card p-2.5 text-xs space-y-0.5">
       <div className="muted">{fmt(tr.tipDay, { d: Number(label) >= 0 ? `+${label}` : label })}</div>
-      {payload.map((p: any) => (
+      {payload.filter((p: any) => p.value != null).map((p: any) => (
         <div key={p.dataKey} className="flex justify-between gap-3">
-          <span style={{ color: p.color }}>{p.dataKey === "hdi" ? tr.legend.hdi : tr.legend.prob}</span>
-          <span className="tabular-nums">{p.dataKey === "prob" ? `${Math.round(p.value)}%` : p.value?.toFixed?.(2)}</span>
+          <span style={{ color: p.color }}>{p.dataKey === "hdi" ? tr.legend.hdi : tr.legend.score}</span>
+          <span className="tabular-nums">{p.dataKey === "score" ? `${Math.round(p.value)} / 100` : p.value?.toFixed?.(2)}</span>
         </div>
       ))}
     </div>

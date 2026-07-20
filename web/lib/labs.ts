@@ -76,7 +76,7 @@ export interface LabEntry {
 
 export interface PhysioSummary {
   riskLevel: RiskLevel;
-  riskPct: number;
+  riskScore: number;
   alarm: boolean;
   /** days the detector's alarm led the user's symptom onset (demo subject) */
   leadDays: number | null;

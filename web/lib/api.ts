@@ -1,8 +1,58 @@
 // API types + server-side fetch helpers for the Python ML service.
 
-export interface DayRecord {
+export type RiskMode = "score";
+export type RiskBand = "low" | "moderate" | "elevated";
+export type DecisionStatus =
+  | "available"
+  | "warming"
+  | "insufficient_data"
+  | "stale"
+  | "unsupported"
+  | "error";
+export type SourceMode =
+  | "research_demo"
+  | "personal_export"
+  | "personal_live"
+  | "synthetic_test";
+export type IntegrationStatus = "planned" | "implemented" | "e2e_verified";
+export type BaselineStatus = "warming" | "ready" | "stale" | "frozen" | "recovery";
+
+export interface DataQuality {
+  status: "sufficient" | "insufficient";
+  available_signals: string[];
+  missing_signals: string[];
+}
+
+export interface RiskContract {
+  as_of: string | null;
+  source_mode: SourceMode;
+  integration_status: IntegrationStatus;
+  provider: string | null;
+  adapter_version: string;
+  dataset_version: string | null;
+  demo_case_id: string | null;
+  provenance: Record<string, string | number | null>;
+  risk_mode: RiskMode;
+  risk_score: number | null;
+  risk_band: RiskBand | null;
+  band_version: string;
+  decision_status: DecisionStatus;
+  reason_codes: string[];
+  calibrated_probability: null;
+  probability_available: false;
+  probability_supported_for: string[];
+  score_definition_id: string;
+  score_version: string;
+  target_definition_id: null;
+  prediction_horizon_days: null;
+  baseline_status: BaselineStatus;
+  data_quality: DataQuality;
+  model_version: string | null;
+  calibration_version: null;
+}
+
+export interface DayRecord extends RiskContract {
   day_index: number;
-  infection_probability: number | null;
   health_deviation_index: number;
   corroborating_signals: number;
   alarm: boolean;
@@ -10,7 +60,7 @@ export interface DayRecord {
   why: { signal: string; z: number }[];
 }
 
-export interface DemoResult {
+export interface DemoResult extends RiskContract {
   source: string;
   subject_id: string;
   onset_day: number | null;

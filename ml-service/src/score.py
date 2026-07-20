@@ -1,22 +1,21 @@
 """
-Serving logic — score a subject's biomarker history with the trained model AND
-the changepoint monitor, and return everything the frontend replay timeline and
-the daily webhook alert need.
+Serving logic — score a subject's biomarker history with the personal
+changepoint monitor and return the score used by the frontend timeline.
 
-This is the seam where the two halves of the product meet:
-  * trained classifier  -> calibrated infection probability + lead-time context
-  * changepoint monitor -> real-time personalized alarm + per-signal "why"
+The trained classifier remains available for offline Research evaluation, but
+its uncalibrated per-day output is deliberately not exposed by this serving
+contract. The product currently exposes one score based on deviation from the
+user's personal baseline.
 """
 from __future__ import annotations
 
 import os
 
 import joblib
-import numpy as np
 import pandas as pd
 
-from features import build_features, feature_columns
 from changepoint import analyze, top_contributors, RISE_SIGNALS, DROP_SIGNALS
+from risk_contract import SourceMode, build_risk_contract
 
 MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "models")
 _MODEL_CACHE: dict | None = None
@@ -30,11 +29,21 @@ def load_model() -> dict | None:
     return _MODEL_CACHE
 
 
-def score_history(history: pd.DataFrame) -> dict:
+def score_history(
+    history: pd.DataFrame,
+    *,
+    source_mode: SourceMode = "synthetic_test",
+    integration_status: str = "implemented",
+    provider: str | None = None,
+    adapter_version: str = "legacy-direct-history-v1",
+    dataset_version: str | None = None,
+    demo_case_id: str | None = None,
+    provenance: dict[str, str | int | None] | None = None,
+) -> dict:
     """
     history: one subject, columns day_index + biomarkers (RHR required).
-    Returns per-day records (probability + changepoint index + alarm) and a
-    summary — the exact payload the replay timeline renders.
+    Returns per-day score records and a summary — the exact payload the replay
+    timeline renders.
     """
     hist = history.sort_values("day_index").reset_index(drop=True).copy()
     if "subject_id" not in hist.columns:
@@ -43,33 +52,44 @@ def score_history(history: pd.DataFrame) -> dict:
     # changepoint / personalized layer
     cp = analyze(hist)
 
-    # trained-model probability layer (device-agnostic features)
     bundle = load_model()
-    probs = np.full(len(hist), np.nan)
-    if bundle is not None:
-        feat = build_features(hist)
-        cols = bundle["features"]
-        for c in cols:
-            if c not in feat.columns:
-                feat[c] = np.nan
-        usable = feat.dropna(subset=cols)
-        if len(usable):
-            p = bundle["model"].predict_proba(usable[cols].values)[:, 1]
-            probs[usable.index.values] = p
 
     all_signals = RISE_SIGNALS + DROP_SIGNALS
+    configured_signals = [signal for signal in all_signals if signal in cp.columns]
+    base_provenance = provenance or {"input": "score-history", "index": "day_index"}
     records = []
-    for i, row in cp.iterrows():
-        prob = probs[i]
+    for _, row in cp.iterrows():
+        hdi = float(row["health_deviation_index"])
         signals = {}
         for sig in all_signals:
             zc = f"z_{sig}"
             if zc in row and pd.notna(row[zc]):
                 signals[sig] = round(float(row[zc]), 2)
+        available_signals = sorted(signals)
+        missing_signals = sorted(set(configured_signals) - set(available_signals))
+        as_of = None
+        for time_field in ("as_of", "local_date", "date"):
+            if time_field in row and pd.notna(row[time_field]):
+                value = row[time_field]
+                as_of = value.isoformat() if hasattr(value, "isoformat") else str(value)
+                break
+        contract = build_risk_contract(
+            hdi=hdi,
+            source_mode=source_mode,
+            integration_status=integration_status,
+            available_signals=available_signals,
+            missing_signals=missing_signals,
+            as_of=as_of,
+            provider=provider,
+            adapter_version=adapter_version,
+            dataset_version=dataset_version,
+            demo_case_id=demo_case_id,
+            provenance={**base_provenance, "day_index": int(row["day_index"])},
+        )
         records.append({
             "day_index": int(row["day_index"]),
-            "infection_probability": None if np.isnan(prob) else round(float(prob), 4),
-            "health_deviation_index": float(row["health_deviation_index"]),
+            **contract,
+            "health_deviation_index": hdi,
             "corroborating_signals": int(row["corroborating_signals"]),
             "alarm": bool(row["alarm"]),
             "signals": signals,          # per-signal z-scores for the timeline
@@ -77,7 +97,31 @@ def score_history(history: pd.DataFrame) -> dict:
         })
 
     fired = [r for r in records if r["alarm"]]
+    if records:
+        summary_contract = {
+            key: value
+            for key, value in records[-1].items()
+            if key not in {
+                "day_index", "health_deviation_index", "corroborating_signals",
+                "alarm", "signals", "why",
+            }
+        }
+    else:
+        summary_contract = build_risk_contract(
+            hdi=0.0,
+            source_mode=source_mode,
+            integration_status=integration_status,
+            available_signals=[],
+            missing_signals=configured_signals,
+            as_of=None,
+            provider=provider,
+            adapter_version=adapter_version,
+            dataset_version=dataset_version,
+            demo_case_id=demo_case_id,
+            provenance=base_provenance,
+        )
     return {
+        **summary_contract,
         "model_loaded": bundle is not None,
         "n_days": len(records),
         "n_alarms": len(fired),

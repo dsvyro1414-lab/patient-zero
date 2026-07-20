@@ -306,7 +306,7 @@ function PhysioCard({
       <p className="muted text-xs mb-3">{L.physio.sub}</p>
       <ul className="space-y-1.5 text-sm text-[color:var(--text)]/90">
         <li>
-          {fmt(L.physio.riskLine, { level: t.risk.word[physio.riskLevel], pct: physio.riskPct })}
+          {fmt(L.physio.riskLine, { level: t.risk.word[physio.riskLevel], score: physio.riskScore })}
         </li>
         {physio.leadDays != null && (
           <li>{fmt(L.physio.lead, { d: physio.leadDays })}</li>

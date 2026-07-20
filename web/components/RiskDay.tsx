@@ -12,12 +12,12 @@ export function RiskDay({ view, t }: { view: DayView; t: Dict["risk"] }) {
           {t.word[view.level]}
         </div>
         <div className="text-xl font-bold tabular-nums" style={{ color }}>
-          {view.pct}%
+          {view.score} / 100
         </div>
       </div>
       <div className="mt-1 text-xs muted">{t.sub}</div>
       <div className="mt-3 h-2 rounded-full bg-[color:var(--track)] overflow-hidden">
-        <div className="h-full rounded-full" style={{ width: `${view.pct}%`, background: color }} />
+        <div className="h-full rounded-full" style={{ width: `${view.score}%`, background: color }} />
       </div>
     </div>
   );
